@@ -7,6 +7,8 @@ import { getStorage, keys, MAX_UPLOAD_BYTES, UPLOAD_URL_TTL_SECONDS } from "@/li
 import { ingestUpload, InvalidImageError } from "@/lib/images";
 import { newId } from "@/lib/ids";
 import { createGarment, getGarment, renameGarment, softDeleteGarment } from "@/lib/dal/garments";
+import { addGarmentPhoto, deleteGarmentPhoto, getGarmentPhoto, listGarmentPhotos, MAX_EXTRA_PHOTOS } from "@/lib/dal/garment-photos";
+import type { GarmentPhotoKind } from "@/lib/db/schema";
 import { getQueue } from "@/lib/queue";
 import { audit } from "@/lib/dal/audit";
 import { clientIp, rateLimit } from "@/lib/security/request";
@@ -94,5 +96,51 @@ export async function deleteGarmentAction(garmentId: string): Promise<ActionResu
   await getStorage().deletePrefix(keys.garmentPrefix(ctx.tenant.id, garmentId)).catch(() => {});
   await audit({ tenantId: ctx.tenant.id, actorId: ctx.user.id, action: "garment.delete", targetType: "garment", targetId: garmentId, ip: await clientIp() });
   revalidatePath("/gallery");
+  return { ok: true, data: undefined };
+}
+
+/** Extra angle (back, detail) for an existing garment. Same validation and re-encoding as the main photo. */
+export async function addGarmentPhotoAction(garmentId: string, uploadId: string, kind: GarmentPhotoKind): Promise<ActionResult<{ photoId: string }>> {
+  const ctx = await requireTenant();
+  if (!/^up_[a-z0-9]+$/.test(uploadId)) return { ok: false, error: "Invalid upload." };
+  if (!["back", "detail", "other"].includes(kind)) return { ok: false, error: "Unknown photo type." };
+  const garment = await getGarment(ctx.tenant.id, garmentId);
+  if (!garment) return { ok: false, error: "Garment not found." };
+  const existing = await listGarmentPhotos(ctx.tenant.id, garmentId);
+  if (existing.length >= MAX_EXTRA_PHOTOS) return { ok: false, error: `You can add up to ${MAX_EXTRA_PHOTOS} extra photos.` };
+
+  const storage = getStorage();
+  const uploadKey = keys.upload(ctx.tenant.id, uploadId);
+  if (!(await storage.exists(uploadKey))) return { ok: false, error: "Upload not found. Please try again." };
+  try {
+    const raw = await storage.get(uploadKey);
+    const { original, thumb, width, height } = await ingestUpload(raw);
+    const photoId = newId("gph");
+    const storageKey = keys.garmentPhoto(ctx.tenant.id, garmentId, photoId);
+    const thumbKey = keys.garmentPhotoThumb(ctx.tenant.id, garmentId, photoId);
+    await storage.put(storageKey, original, "image/jpeg");
+    await storage.put(thumbKey, thumb, "image/jpeg");
+    await storage.delete(uploadKey);
+    await addGarmentPhoto({ id: photoId, tenantId: ctx.tenant.id, garmentId, kind, storageKey, thumbKey, width, height, createdBy: ctx.user.id });
+    await audit({ tenantId: ctx.tenant.id, actorId: ctx.user.id, action: "garment.photo.add", targetType: "garment", targetId: garmentId, metadata: { kind, photoId } });
+    revalidatePath(`/gallery/${garmentId}`);
+    return { ok: true, data: { photoId } };
+  } catch (err) {
+    await storage.delete(uploadKey).catch(() => {});
+    if (err instanceof InvalidImageError) return { ok: false, error: err.message };
+    console.error("addGarmentPhoto failed", err);
+    return { ok: false, error: "We could not process that photo. Please try another." };
+  }
+}
+
+export async function deleteGarmentPhotoAction(photoId: string): Promise<ActionResult> {
+  const ctx = await requireTenant();
+  const photo = await getGarmentPhoto(ctx.tenant.id, photoId);
+  if (!photo) return { ok: false, error: "Not found." };
+  await deleteGarmentPhoto(ctx.tenant.id, photoId);
+  const storage = getStorage();
+  await Promise.all([storage.delete(photo.storageKey).catch(() => {}), storage.delete(photo.thumbKey).catch(() => {})]);
+  await audit({ tenantId: ctx.tenant.id, actorId: ctx.user.id, action: "garment.photo.delete", targetType: "garment", targetId: photo.garmentId, metadata: { photoId } });
+  revalidatePath(`/gallery/${photo.garmentId}`);
   return { ok: true, data: undefined };
 }

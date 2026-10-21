@@ -9,6 +9,7 @@ import { orderForArc } from "@/lib/reels/arc";
 import { makeThumb } from "@/lib/images";
 import { newId } from "@/lib/ids";
 import { getReelForWorker, insertReelAsset, setReelProgress, updateReel } from "@/lib/dal/reels";
+import { listGarmentPhotos } from "@/lib/dal/garment-photos";
 import { creditTenant } from "@/lib/dal/tenants";
 import { creditsForClip, REEL_STILL_COUNT, refundPerFailedStill } from "@/lib/dal/pricing";
 import { getDb, schema } from "@/lib/db";
@@ -36,10 +37,16 @@ export async function runReelStills(reelId: string): Promise<void> {
   let kept = 0;
   let failed = 0;
   try {
-    const [heroImage, garmentImage] = await Promise.all([storage.get(reel.sourceImage.storageKey), storage.get(reel.garment.originalKey)]);
+    const [heroImage, garmentImage, extraPhotos] = await Promise.all([
+      storage.get(reel.sourceImage.storageKey),
+      storage.get(reel.garment.originalKey),
+      listGarmentPhotos(tenantId, reel.garment.id),
+    ]);
+    const references = await Promise.all(extraPhotos.map(async (p) => ({ kind: p.kind, image: await storage.get(p.storageKey) })));
     const analysis = reel.garment.analysis ?? null;
     const stills = await getStoryboard().generate({
       heroImage,
+      references,
       garmentAnalysis: analysis,
       garmentTitle: reel.garment.title,
       vibe: reel.vibe,

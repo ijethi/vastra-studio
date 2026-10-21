@@ -33,6 +33,11 @@ export class GeminiStoryboardProvider implements StoryboardProvider {
     const scenes = SCENES[input.vibe].slice(0, Math.max(1, input.count));
     const hero = await sharp(input.heroImage).rotate().resize(1024, 1536, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 92 }).toBuffer();
     const garment = describeGarment(input.garmentAnalysis, input.garmentTitle);
+    const refs: Array<{ kind: string; data: string }> = [];
+    for (const r of input.references ?? []) {
+      const data = (await sharp(r.image).rotate().resize(1024, 1536, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 90 }).toBuffer()).toString("base64");
+      refs.push({ kind: r.kind, data });
+    }
     const mood = vibeInfo(input.vibe).mood;
     const out: StoryboardStill[] = [];
     let lastError: unknown;
@@ -43,14 +48,19 @@ export class GeminiStoryboardProvider implements StoryboardProvider {
         `The woman in image 1 is the subject, wearing ${garment}. Keep the garment exactly as in image 1: same colour, print, embroidery, borders, neckline, sleeves and length. Do not restyle, recolour or redesign it.`,
         `Scene: she is ${scene.prompt}.`,
         `Framing: ${FRAMING[scene.shotType]}. Mood: ${mood}.`,
+        refs.length ? `Images ${refs.map((_, k) => k + 2).join(", ")} show the same garment from other angles (${refs.map((r) => r.kind).join(", ")}); use them so the back and the fabric detail are exactly right.` : "",
         "Vertical 9:16, natural hands and anatomy, no text, no logos, no watermark, no other people.",
-      ].join(" ");
+      ].filter(Boolean).join(" ");
       const body = {
         model: env.GEMINI_IMAGE_MODEL,
         input: [
           { type: "text", text },
           { type: "text", text: "Image 1, the reference for the woman and the exact garment:" },
           { type: "image", mime_type: "image/jpeg", data: hero.toString("base64") },
+          ...refs.flatMap((r, k) => [
+            { type: "text", text: `Image ${k + 2}, the garment seen from the ${r.kind}:` },
+            { type: "image", mime_type: "image/jpeg", data: r.data },
+          ]),
         ],
         response_format: { type: "image", mime_type: "image/jpeg", aspect_ratio: "9:16", image_size: "1K", delivery: "inline" },
         generation_config: { seed: i + 1 },

@@ -199,6 +199,30 @@ export const garments = pgTable(
   (t) => [index("garments_tenant_created_idx").on(t.tenantId, t.createdAt)],
 );
 
+/** Extra angles of a garment: back and detail shots improve reels and future try-on fidelity. */
+export type GarmentPhotoKind = "back" | "detail" | "other";
+
+export const garmentPhotos = pgTable(
+  "garment_photos",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    garmentId: text("garment_id")
+      .notNull()
+      .references(() => garments.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<GarmentPhotoKind>().notNull().default("other"),
+    storageKey: text("storage_key").notNull(),
+    thumbKey: text("thumb_key").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("garment_photos_garment_idx").on(t.garmentId)],
+);
+
 export type JobStatus =
   | "queued"
   | "analysing"

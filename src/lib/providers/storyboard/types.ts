@@ -3,6 +3,8 @@ import type { GarmentAnalysis, ReelShotType, ReelVibe } from "@/lib/db/schema";
 export type StoryboardInput = {
   /** JPEG/PNG bytes of the finished on-model image the scenes are drawn from. */
   heroImage: Buffer;
+  /** Optional extra angles of the same garment (back, detail) that scenes can lean on. */
+  references?: Array<{ kind: "back" | "detail" | "other"; image: Buffer }>;
   garmentAnalysis: GarmentAnalysis | null;
   garmentTitle: string;
   vibe: ReelVibe;

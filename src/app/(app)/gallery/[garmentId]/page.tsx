@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Badge, Card, Skeleton } from "@/components/ui/primitives";
 import { GarmentActions, ImageCard } from "./garment-actions";
 import { ShareLinkButton } from "@/components/share/share-dialog";
+import { ExtraPhotos } from "@/components/gallery/extra-photos";
+import { listGarmentPhotos, MAX_EXTRA_PHOTOS } from "@/lib/dal/garment-photos";
 
 async function Detail({ params }: { params: Promise<{ garmentId: string }> }) {
   const { garmentId } = await params;
@@ -23,6 +25,9 @@ async function Detail({ params }: { params: Promise<{ garmentId: string }> }) {
   const [jobs, reelRows] = await Promise.all([listJobsForGarment(ctx.tenant.id, garmentId), listReelsForGarment(ctx.tenant.id, garmentId)]);
   const storage = getStorage();
   const originalUrl = await storage.signRead(garment.originalKey, READ_URL_TTL_SECONDS);
+  const extraPhotos = await Promise.all(
+    (await listGarmentPhotos(ctx.tenant.id, garmentId)).map(async (p) => ({ id: p.id, kind: p.kind, thumbUrl: await storage.signRead(p.thumbKey, READ_URL_TTL_SECONDS) })),
+  );
 
   const runs = await Promise.all(
     jobs.map(async (j) => ({
@@ -106,6 +111,7 @@ async function Detail({ params }: { params: Promise<{ garmentId: string }> }) {
           <div className="image-frame aspect-[3/4]">
             <Image src={originalUrl} alt={`${garment.title} garment photo`} width={garment.width} height={garment.height} unoptimized className="h-full w-full object-cover" />
           </div>
+          <ExtraPhotos garmentId={garment.id} photos={extraPhotos} canEdit max={MAX_EXTRA_PHOTOS} />
         </aside>
 
         <section className="space-y-8">

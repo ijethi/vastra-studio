@@ -30,10 +30,16 @@ export class MockStoryboardProvider implements StoryboardProvider {
     const hero = sharp(input.heroImage).rotate();
     const meta = await hero.metadata();
     const heroPng = await hero.png().toBuffer();
+    const detailRef = input.references?.find((r) => r.kind === "detail");
+    const detailPng = detailRef ? await sharp(detailRef.image).rotate().png().toBuffer() : null;
+    const detailMeta = detailRef ? await sharp(detailRef.image).rotate().metadata() : null;
     const out: StoryboardStill[] = [];
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      const framed = await reframe(heroPng, meta.width ?? 864, meta.height ?? 1296, scene.shotType, i);
+      const useDetail = scene.shotType === "detail" && detailPng && detailMeta;
+      const framed = useDetail
+        ? await reframe(detailPng, detailMeta.width ?? 864, detailMeta.height ?? 1296, "full-body", i)
+        : await reframe(heroPng, meta.width ?? 864, meta.height ?? 1296, scene.shotType, i);
       const washLayer = Buffer.from(
         `<svg width="${STILL_WIDTH}" height="${STILL_HEIGHT}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="${wash.colour}" fill-opacity="${wash.alpha}"/></svg>`,
       );
