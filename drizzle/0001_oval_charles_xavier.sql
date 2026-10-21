@@ -1,0 +1,1 @@
+ALTER TABLE "tenant_settings" ADD COLUMN "auto_generate" boolean DEFAULT true NOT NULL;

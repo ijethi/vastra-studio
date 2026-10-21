@@ -63,10 +63,25 @@ async function loadBaseModelImage(baseModelId: string, backdropId: string): Prom
 }
 
 async function runGenerate(jobId: string): Promise<void> {
-  const job = await getJobForWorker(jobId);
+  let job = await getJobForWorker(jobId);
   if (!job || !["queued", "generating", "finishing", "gating", "analysing"].includes(job.status)) return;
   const tenantId = job.tenantId;
+
+  // Batch uploads start the job before the garment check has run: do it now so
+  // unusable photos are refunded instead of wasting a provider call.
+  if (!job.garment.analysis && job.garment.status !== "ready") {
+    await setJobProgress(jobId, "analysing", 3, "Checking the photo");
+    await runAnalyze(tenantId, job.garment.id);
+    job = (await getJobForWorker(jobId)) ?? job;
+  }
   const garment = job.garment;
+  if (garment.status === "unusable") {
+    if (job.creditsCharged > 0) {
+      await creditTenant({ tenantId, amount: job.creditsCharged, reason: "refund", jobId, note: "Photo could not be used", actorId: null });
+    }
+    await updateJob(jobId, { status: "failed", progress: 100, statusMessage: "This photo cannot be used. Credits refunded.", creditsRefunded: job.creditsCharged, error: "unusable_photo", finishedAt: new Date() });
+    return;
+  }
   const storage = getStorage();
   const vision = getVision();
 

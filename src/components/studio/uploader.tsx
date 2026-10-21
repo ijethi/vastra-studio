@@ -1,130 +1,85 @@
 "use client";
 
 import * as React from "react";
-import { Camera, ImagePlus, Upload } from "lucide-react";
-import { requestUploadUrl, registerGarment } from "@/app/actions/garments";
-import { getGarmentSummary, type GarmentSummary } from "@/app/actions/studio";
-import { Alert, Progress } from "@/components/ui/primitives";
+import { Camera, Images } from "lucide-react";
+import { Alert } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
-const MAX = 15 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
-type Phase = "idle" | "uploading" | "processing";
-
-export function Uploader({ onReady }: { onReady: (g: GarmentSummary) => void }) {
-  const [phase, setPhase] = React.useState<Phase>("idle");
-  const [progress, setProgress] = React.useState(0);
-  const [preview, setPreview] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+/**
+ * The first screen. Two big buttons, no settings. Phone users get the camera
+ * directly; everyone can drop or pick several photos at once.
+ */
+export function Uploader({ onFiles, busy, hint }: { onFiles: (files: File[]) => void; busy?: boolean; hint?: string }) {
   const [drag, setDrag] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const cameraRef = React.useRef<HTMLInputElement>(null);
+  const galleryRef = React.useRef<HTMLInputElement>(null);
 
-  async function handleFile(file: File) {
+  function accept(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    const files = Array.from(list);
+    const bad = files.find((f) => !ACCEPT.split(",").includes(f.type) && !/\.(heic|heif)$/i.test(f.name));
+    if (bad) return setError("Please choose photos only: JPEG, PNG, WebP or HEIC.");
+    const big = files.find((f) => f.size > MAX_UPLOAD_BYTES);
+    if (big) return setError(`"${big.name}" is over 15 MB. Most phones can export a smaller copy.`);
     setError(null);
-    if (!ACCEPT.split(",").includes(file.type) && !/\.(heic|heif)$/i.test(file.name)) {
-      return setError("Please choose a JPEG, PNG, WebP or HEIC photo.");
-    }
-    if (file.size > MAX) return setError("That photo is over 15 MB. Most phones can export a smaller copy.");
-
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    setPhase("uploading");
-    setProgress(0);
-
-    const contentType = file.type || "image/heic";
-    const signed = await requestUploadUrl({ contentType, size: file.size });
-    if (!signed.ok) {
-      setPhase("idle");
-      return setError(signed.error);
-    }
-
-    try {
-      await putWithProgress(signed.data.url, file, signed.data.headers, setProgress);
-    } catch {
-      setPhase("idle");
-      return setError("The upload was interrupted. Please check your connection and try again.");
-    }
-
-    setPhase("processing");
-    const reg = await registerGarment(signed.data.uploadId);
-    if (!reg.ok) {
-      setPhase("idle");
-      return setError(reg.error);
-    }
-    const summary = await getGarmentSummary(reg.data.garmentId);
-    if (summary) onReady(summary);
-    setPhase("idle");
+    onFiles(files.slice(0, 30));
   }
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDrag(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) void handleFile(file);
-  }
-
-  const busy = phase !== "idle";
 
   return (
     <div className="space-y-4">
       <div
-        role="button"
-        tabIndex={0}
-        aria-label="Upload a garment photo"
-        onClick={() => !busy && inputRef.current?.click()}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !busy && inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
           setDrag(true);
         }}
         onDragLeave={() => setDrag(false)}
-        onDrop={onDrop}
-        className={cn(
-          "card relative flex min-h-[380px] cursor-pointer flex-col items-center justify-center overflow-hidden p-8 text-center transition-colors",
-          drag && "border-accent bg-accent-soft/40",
-          busy && "cursor-default",
-        )}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDrag(false);
+          if (!busy) accept(e.dataTransfer.files);
+        }}
+        className={cn("card relative flex min-h-[420px] flex-col items-center justify-center p-8 text-center transition-colors", drag && "border-accent bg-accent-soft/40")}
       >
-        {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-        <img src={preview} alt="" className={cn("absolute inset-0 h-full w-full object-cover transition-opacity", busy ? "opacity-30" : "opacity-20")} />
-        ) : null}
-        <div className="relative z-10 max-w-sm">
-          <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent">
-            {busy ? <Upload className="h-6 w-6 animate-pulse" aria-hidden="true" /> : <ImagePlus className="h-6 w-6" aria-hidden="true" />}
-          </div>
-          {busy ? (
-            <>
-              <h2 className="text-xl">{phase === "uploading" ? "Uploading your photo" : "Checking the photo"}</h2>
-              <div className="mt-4">
-                <Progress value={phase === "uploading" ? progress : 100} label="Upload progress" />
-              </div>
-              <p className="mt-2 text-sm text-ink-2">{phase === "uploading" ? `${progress}%` : "Removing metadata and preparing a preview"}</p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl">Drop a garment photo here</h2>
-              <p className="mt-2 text-sm leading-6 text-ink-2">Flat-lay, hanger or mannequin. Even light, the whole garment in frame. JPEG, PNG, WebP or HEIC up to 15 MB.</p>
-              <div className="mt-6 flex flex-wrap justify-center gap-2 text-sm">
-                <span className="inline-flex items-center gap-2 rounded-full border border-line-strong bg-surface px-3.5 py-2 text-ink">
-                  <Upload className="h-4 w-4" aria-hidden="true" /> Choose a photo
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-line-strong bg-surface px-3.5 py-2 text-ink sm:hidden">
-                  <Camera className="h-4 w-4" aria-hidden="true" /> Take a photo
-                </span>
-              </div>
-            </>
-          )}
+        <p className="eyebrow mb-3">Step 1 of 2</p>
+        <h2 className="display-lg">Add a photo of the garment</h2>
+        <p className="mt-3 max-w-md text-[0.95rem] leading-7 text-ink-2">
+          On a hanger, flat on a table or on a mannequin. Good light, whole garment in the frame. We do the rest.
+        </p>
+        <div className="mt-8 grid w-full max-w-md gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => cameraRef.current?.click()}
+            className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl bg-accent text-on-accent shadow-[var(--shadow)] transition-transform hover:bg-accent-hover active:scale-[0.99] disabled:opacity-60"
+          >
+            <Camera className="h-7 w-7" aria-hidden="true" />
+            <span className="text-base font-semibold">Take a photo</span>
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => galleryRef.current?.click()}
+            className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-line-strong bg-surface text-ink shadow-[var(--shadow)] transition-transform hover:bg-surface-2 active:scale-[0.99] disabled:opacity-60"
+          >
+            <Images className="h-7 w-7 text-accent" aria-hidden="true" />
+            <span className="text-base font-semibold">Choose photos</span>
+            <span className="text-xs text-ink-2">one or many</span>
+          </button>
         </div>
-        <input ref={inputRef} type="file" accept={ACCEPT} className="sr-only" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} disabled={busy} />
+        <p className="mt-5 text-xs text-ink-3">{hint ?? "Each photo makes 2 versions for 25 credits. Nothing is charged for photos we cannot use."}</p>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take a photo" onChange={(e) => accept(e.target.files)} disabled={busy} />
+        <input ref={galleryRef} type="file" accept={ACCEPT} multiple className="sr-only" aria-label="Choose photos" onChange={(e) => accept(e.target.files)} disabled={busy} />
       </div>
       {error ? <Alert tone="danger">{error}</Alert> : null}
     </div>
   );
 }
 
-function putWithProgress(url: string, file: File, headers: Record<string, string>, onProgress: (pct: number) => void) {
+export function putWithProgress(url: string, file: File, headers: Record<string, string>, onProgress: (pct: number) => void) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);

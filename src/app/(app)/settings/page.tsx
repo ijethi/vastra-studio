@@ -34,6 +34,7 @@ async function Settings() {
           defaultBackdrop: settings?.defaultBackdrop ?? DEFAULT_BACKDROP_ID,
           defaultVariations: settings?.defaultVariations ?? 2,
           watermarkEnabled: settings?.watermarkEnabled ?? true,
+          autoGenerate: settings?.autoGenerate ?? true,
         }}
         plan={settings?.plan ?? "trial"}
       />

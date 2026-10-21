@@ -16,6 +16,7 @@ const defaultsSchema = z.object({
   defaultBackdrop: z.string(),
   defaultVariations: z.number().int().min(1).max(4),
   watermarkEnabled: z.boolean(),
+  autoGenerate: z.boolean(),
 });
 
 export async function saveDefaults(input: z.input<typeof defaultsSchema>): Promise<ActionResult> {

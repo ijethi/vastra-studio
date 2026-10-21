@@ -79,27 +79,22 @@ test("creates a boutique and lands in the studio with 100 credits", async () => 
   await expect(credits()).toContainText("100");
 });
 
-test("uploads a garment and generates two images for 25 credits", async () => {
-  await page.locator('input[type="file"]').setInputFiles(SAMPLE);
+test("uploads a garment and the photo is made automatically for 25 credits", async () => {
+  // One tap: choosing a photo uploads it, checks it, and starts the run with the house defaults.
+  await page.locator('input[aria-label="Choose photos"]').setInputFiles(SAMPLE);
 
-  // The garment card appears once the upload is registered; analysis flips its badge to Ready.
-  const workbench = page.locator("section").filter({ has: page.getByRole("heading", { name: "Model", exact: true }) });
-  await expect(workbench).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Ready", { exact: true })).toBeVisible({ timeout: 60_000 });
-  garmentTitle = (await workbench.getByRole("heading", { level: 2 }).first().textContent())?.trim() ?? "";
-  expect(garmentTitle.length).toBeGreaterThan(0);
-
-  const two = page.getByRole("radiogroup", { name: "Number of variations" }).getByRole("radio", { name: "2", exact: true });
-  await two.click();
-  await expect(two).toHaveAttribute("aria-checked", "true");
-
-  await page.getByRole("button", { name: /^Generate 2 images · 25 credits$/ }).click();
+  // The progress card names the garment once the run has started.
+  const progressCard = page.locator("section").filter({ has: page.getByRole("progressbar", { name: "Progress" }) });
+  await expect(progressCard.or(page.locator("section").filter({ has: page.getByRole("button", { name: "Make again" }) }))).toBeVisible({ timeout: 90_000 });
 
   // Both results render, the run finishes, and the shell refreshes the balance.
   const results = page.locator('img[alt*=", variation "]');
   await expect(results).toHaveCount(2, { timeout: 150_000 });
-  await expect(page.getByRole("button", { name: "Run again" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "Make again" })).toBeVisible({ timeout: 60_000 });
   await expect(credits()).toContainText("75");
+
+  garmentTitle = (await page.getByRole("heading", { level: 2 }).first().textContent())?.trim() ?? "";
+  expect(garmentTitle.length).toBeGreaterThan(0);
 
   const galleryHref = await page.getByRole("link", { name: "gallery", exact: true }).getAttribute("href");
   garmentId = galleryHref?.split("/").pop() ?? "";

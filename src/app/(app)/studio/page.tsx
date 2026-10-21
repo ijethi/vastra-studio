@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { requireTenant } from "@/lib/auth/session";
 import { getTenantSettings } from "@/lib/dal/tenants";
-import { getGarment, listGarments } from "@/lib/dal/garments";
+import { getGarment } from "@/lib/dal/garments";
 import { getStorage, READ_URL_TTL_SECONDS } from "@/lib/storage";
 import { BACKDROPS, BASE_MODELS, DEFAULT_BACKDROP_ID, DEFAULT_BASE_MODEL_ID } from "@/lib/base-models/catalog";
 import { StudioWorkbench } from "@/components/studio/workbench";
@@ -12,7 +12,7 @@ export const metadata = { title: "Studio" };
 async function Studio({ searchParams }: { searchParams: Promise<{ garment?: string }> }) {
   const { garment: garmentId } = await searchParams;
   const ctx = await requireTenant();
-  const [settings, recent] = await Promise.all([getTenantSettings(ctx.tenant.id), listGarments(ctx.tenant.id, 8)]);
+  const settings = await getTenantSettings(ctx.tenant.id);
   const storage = getStorage();
 
   const initialGarment = garmentId ? await getGarment(ctx.tenant.id, garmentId) : null;
@@ -27,10 +27,6 @@ async function Studio({ searchParams }: { searchParams: Promise<{ garment?: stri
       }
     : null;
 
-  const recentGarments = await Promise.all(
-    recent.map(async (g) => ({ id: g.id, title: g.title, thumbUrl: await storage.signRead(g.thumbKey, READ_URL_TTL_SECONDS) })),
-  );
-
   return (
     <StudioWorkbench
       baseModels={BASE_MODELS.filter((m) => m.active)}
@@ -39,10 +35,10 @@ async function Studio({ searchParams }: { searchParams: Promise<{ garment?: stri
         baseModelId: settings?.defaultBaseModelId ?? DEFAULT_BASE_MODEL_ID,
         backdrop: settings?.defaultBackdrop ?? DEFAULT_BACKDROP_ID,
         variations: settings?.defaultVariations ?? 2,
+        autoGenerate: settings?.autoGenerate ?? true,
       }}
       credits={settings?.creditsBalance ?? 0}
       initialGarment={initial}
-      recentGarments={recentGarments}
       boutiqueName={ctx.tenant.name}
     />
   );

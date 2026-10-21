@@ -54,7 +54,7 @@ export async function getTenantSettings(tenantId: string) {
 
 export async function updateTenantSettings(
   tenantId: string,
-  patch: Partial<Pick<typeof schema.tenantSettings.$inferInsert, "defaultBaseModelId" | "defaultBackdrop" | "defaultVariations" | "watermarkEnabled" | "country">>,
+  patch: Partial<Pick<typeof schema.tenantSettings.$inferInsert, "defaultBaseModelId" | "defaultBackdrop" | "defaultVariations" | "watermarkEnabled" | "autoGenerate" | "country">>,
 ) {
   const db = await getDb();
   await db.update(schema.tenantSettings).set({ ...patch, updatedAt: new Date() }).where(eq(schema.tenantSettings.tenantId, tenantId));

@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { inviteMember, removeMember, saveDefaults } from "@/app/actions/settings";
 import { cn } from "@/lib/cn";
 
-type Defaults = { defaultBaseModelId: string; defaultBackdrop: string; defaultVariations: number; watermarkEnabled: boolean };
+type Defaults = { defaultBaseModelId: string; defaultBackdrop: string; defaultVariations: number; watermarkEnabled: boolean; autoGenerate: boolean };
 
 export function DefaultsForm({
   canEdit,
@@ -32,8 +32,8 @@ export function DefaultsForm({
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl">House defaults</h2>
-      <p className="mt-1 text-sm text-ink-2">Preselected in the studio so a repeat run is two taps.</p>
+      <h2 className="text-xl">Your house look</h2>
+      <p className="mt-1 text-sm text-ink-2">Used automatically for every new photo, so one upload is all it takes.</p>
       <form
         className="mt-6 space-y-6"
         onSubmit={async (e) => {
@@ -42,12 +42,19 @@ export function DefaultsForm({
           const res = await saveDefaults(v);
           setBusy(false);
           if (!res.ok) return toast.push({ title: res.error, tone: "danger" });
-          toast.push({ title: "Defaults saved", tone: "success" });
+          toast.push({ title: "Saved", tone: "success" });
           router.refresh();
         }}
       >
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--accent)]" disabled={!canEdit} checked={v.autoGenerate} onChange={(e) => setV({ ...v, autoGenerate: e.target.checked })} />
+          <span>
+            <span className="font-medium text-ink">Start making the photo as soon as I upload</span>
+            <span className="block text-ink-2">Turn off if you prefer to check the model and background first, every time.</span>
+          </span>
+        </label>
         <div>
-          <Label htmlFor="default-model">Default model</Label>
+          <Label htmlFor="default-model">Model</Label>
           <div className="flex items-center gap-4">
             <div className="image-frame h-24 w-16 shrink-0">{selected ? <Image src={selected.imagePath} alt="" width={64} height={96} className="h-full w-full object-cover" /> : null}</div>
             <select
@@ -66,7 +73,7 @@ export function DefaultsForm({
           </div>
         </div>
         <div>
-          <Label>Default backdrop</Label>
+          <Label>Background</Label>
           <div className="flex flex-wrap gap-2">
             {backdrops.map((b) => (
               <button
@@ -84,22 +91,25 @@ export function DefaultsForm({
           </div>
         </div>
         <div>
-          <Label htmlFor="default-variations">Default variations</Label>
-          <Input id="default-variations" type="number" min={1} max={4} disabled={!canEdit} value={v.defaultVariations} onChange={(e) => setV({ ...v, defaultVariations: Number(e.target.value) })} className="w-24" />
+          <Label htmlFor="default-variations">Versions per photo</Label>
+          <div className="flex items-center gap-3">
+            <Input id="default-variations" type="number" min={1} max={4} disabled={!canEdit} value={v.defaultVariations} onChange={(e) => setV({ ...v, defaultVariations: Number(e.target.value) })} className="w-24" />
+            <span className="text-xs text-ink-2">2 versions cost 25 credits; each extra one is 10.</span>
+          </div>
         </div>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--accent)]" disabled={!canEdit || plan === "trial"} checked={v.watermarkEnabled} onChange={(e) => setV({ ...v, watermarkEnabled: e.target.checked })} />
           <span>
-            <span className="font-medium text-ink">Visible watermark on downloads</span>
+            <span className="font-medium text-ink">Small boutique label on downloads</span>
             <span className="block text-ink-2">{plan === "trial" ? "Always on during the trial. Buy credits to remove it." : "A small label in the corner of every image."}</span>
           </span>
         </label>
         {canEdit ? (
           <Button type="submit" disabled={busy}>
-            {busy ? <Spinner /> : null} Save defaults
+            {busy ? <Spinner /> : null} Save
           </Button>
         ) : (
-          <p className="text-xs text-ink-3">Only owners and admins can change defaults.</p>
+          <p className="text-xs text-ink-3">Only owners and admins can change these.</p>
         )}
       </form>
     </Card>
@@ -128,7 +138,7 @@ export function TeamPanel({
   return (
     <Card className="p-6">
       <h2 className="text-xl">Team</h2>
-      <p className="mt-1 text-sm text-ink-2">Staff can upload and generate. Admins can also change settings and buy credits.</p>
+      <p className="mt-1 text-sm text-ink-2">Staff can add photos and make images. Admins can also change settings and buy credits.</p>
       <ul className="mt-6 divide-y divide-line">
         {members.map((m) => (
           <li key={m.id} className="flex items-center justify-between gap-3 py-3">
@@ -162,7 +172,7 @@ export function TeamPanel({
           <li key={p.id} className="flex items-center justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm text-ink">{p.email}</p>
-              <p className="text-xs text-ink-2">Invitation pending</p>
+              <p className="text-xs text-ink-2">Invitation sent</p>
             </div>
             <Badge tone="warning" className="capitalize">
               {p.role === "member" ? "staff" : p.role}

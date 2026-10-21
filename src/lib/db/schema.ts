@@ -137,6 +137,8 @@ export const tenantSettings = pgTable("tenant_settings", {
   defaultBackdrop: text("default_backdrop").notNull().default("studio-ivory"),
   defaultVariations: integer("default_variations").notNull().default(2),
   watermarkEnabled: boolean("watermark_enabled").notNull().default(false),
+  /** Start generating with the house defaults as soon as a photo is uploaded. */
+  autoGenerate: boolean("auto_generate").notNull().default(true),
   creditsBalance: integer("credits_balance").notNull().default(0),
   dailySpendCapCredits: integer("daily_spend_cap_credits").notNull().default(500),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

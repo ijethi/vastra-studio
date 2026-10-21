@@ -22,7 +22,10 @@ export async function listGarments(tenantId: string, limit = 60) {
     where: and(eq(schema.garments.tenantId, tenantId), isNull(schema.garments.deletedAt)),
     orderBy: desc(schema.garments.createdAt),
     limit,
-    with: { images: { orderBy: desc(schema.generatedImages.createdAt), limit: 4 } },
+    with: {
+      images: { orderBy: desc(schema.generatedImages.createdAt), limit: 4 },
+      jobs: { orderBy: desc(schema.generationJobs.createdAt), limit: 1 },
+    },
   });
 }
 
