@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Your suit, on a model, in a minute. Photos boutiques can post today.",
   applicationName: "Vastra Studio",
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Vastra" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

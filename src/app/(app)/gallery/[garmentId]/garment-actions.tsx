@@ -11,6 +11,7 @@ import { Input, Label } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 import { deleteGarmentAction, renameGarmentAction } from "@/app/actions/garments";
 import { acceptImageAction } from "@/app/actions/jobs";
+import { ShareLinkButton } from "@/components/share/share-dialog";
 
 export function GarmentActions({ garmentId, title, canDelete }: { garmentId: string; title: string; canDelete: boolean }) {
   const router = useRouter();
@@ -122,7 +123,7 @@ export function ImageCard({
         ) : null}
       </div>
       <figcaption className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-xs text-ink-2">Quality {Math.round((image.qualityScore ?? 0) * 100)}%</span>
+        <ShareLinkButton targetType="image" targetId={image.id} title={alt} size="sm" variant="ghost" />
         <span className="flex items-center gap-1">
           <Button
             variant={accepted ? "primary" : "secondary"}

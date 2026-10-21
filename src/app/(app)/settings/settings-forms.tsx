@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, Input, Label, Spinner } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
-import { inviteMember, removeMember, saveDefaults } from "@/app/actions/settings";
+import { deleteBoutique, inviteMember, removeMember, saveContact, saveDefaults } from "@/app/actions/settings";
 import { cn } from "@/lib/cn";
 
 type Defaults = { defaultBaseModelId: string; defaultBackdrop: string; defaultVariations: number; watermarkEnabled: boolean; autoGenerate: boolean };
@@ -204,6 +204,83 @@ export function TeamPanel({
           </Button>
         </form>
       ) : null}
+    </Card>
+  );
+}
+
+export function ContactForm({ canEdit, values }: { canEdit: boolean; values: { whatsapp: string; instagram: string; city: string } }) {
+  const toast = useToast();
+  const router = useRouter();
+  const [v, setV] = React.useState(values);
+  const [busy, setBusy] = React.useState(false);
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl">How customers reach you</h2>
+      <p className="mt-1 text-sm text-ink-2">Shown on the links you share. Customers tap once to message you on WhatsApp about the piece.</p>
+      <form
+        className="mt-6 space-y-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          const res = await saveContact(v);
+          setBusy(false);
+          if (!res.ok) return toast.push({ title: res.error, tone: "danger" });
+          toast.push({ title: "Saved", tone: "success" });
+          router.refresh();
+        }}
+      >
+        <div>
+          <Label htmlFor="whatsapp">WhatsApp number</Label>
+          <Input id="whatsapp" inputMode="tel" placeholder="+91 98765 43210" disabled={!canEdit} value={v.whatsapp} onChange={(e) => setV({ ...v, whatsapp: e.target.value })} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="instagram">Instagram</Label>
+            <Input id="instagram" placeholder="@yourboutique" disabled={!canEdit} value={v.instagram} onChange={(e) => setV({ ...v, instagram: e.target.value })} />
+          </div>
+          <div>
+            <Label htmlFor="city">City</Label>
+            <Input id="city" placeholder="Jaipur" disabled={!canEdit} value={v.city} onChange={(e) => setV({ ...v, city: e.target.value })} />
+          </div>
+        </div>
+        {canEdit ? (
+          <Button type="submit" disabled={busy}>
+            {busy ? <Spinner /> : null} Save
+          </Button>
+        ) : null}
+      </form>
+    </Card>
+  );
+}
+
+export function DangerZone({ boutiqueName }: { boutiqueName: string }) {
+  const toast = useToast();
+  const router = useRouter();
+  const [name, setName] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  return (
+    <Card className="border-danger/30 p-6 lg:col-span-2">
+      <h2 className="text-xl text-danger">Delete this boutique</h2>
+      <p className="mt-1 text-sm text-ink-2">Removes every photo, every generated image, the team and the credit history. This cannot be undone. Unused credits are not refunded.</p>
+      <form
+        className="mt-5 flex flex-col gap-3 sm:flex-row"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          const res = await deleteBoutique(name);
+          setBusy(false);
+          if (!res.ok) return toast.push({ title: res.error, tone: "danger" });
+          router.push("/onboarding");
+          router.refresh();
+        }}
+      >
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={`Type "${boutiqueName}" to confirm`} aria-label="Confirm boutique name" />
+        <Button type="submit" variant="danger" disabled={busy || name.trim() !== boutiqueName}>
+          {busy ? <Spinner /> : null} Delete boutique
+        </Button>
+      </form>
     </Card>
   );
 }

@@ -11,6 +11,7 @@ import { getBackdrop, getBaseModel } from "@/lib/base-models/catalog";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, Skeleton } from "@/components/ui/primitives";
 import { GarmentActions, ImageCard } from "./garment-actions";
+import { ShareLinkButton } from "@/components/share/share-dialog";
 
 async function Detail({ params }: { params: Promise<{ garmentId: string }> }) {
   const { garmentId } = await params;
@@ -66,6 +67,7 @@ async function Detail({ params }: { params: Promise<{ garmentId: string }> }) {
               <Sparkles className="h-4 w-4" aria-hidden="true" /> Generate
             </Link>
           </Button>
+          {runs.some((r) => r.images.length) ? <ShareLinkButton targetType="garment" targetId={garment.id} title={garment.title} size="md" /> : null}
           <GarmentActions garmentId={garment.id} title={garment.title} canDelete={canDelete} />
         </div>
       </header>

@@ -238,11 +238,14 @@ export function keepLargestComponent(mask: Uint8Array, width: number, height: nu
 
 /** Upscale a working-resolution mask to the input size, feather it, and package the result. */
 export async function finaliseMask(mask: Uint8Array, work: { width: number; height: number }, target: { width: number; height: number }, segmenter: string): Promise<SegmentResult> {
+  // sharp promotes a 1-channel raw input to sRGB after blur/resize; force it back to one channel.
   const feathered = await sharp(Buffer.from(mask.buffer, mask.byteOffset, mask.length), { raw: { width: work.width, height: work.height, channels: 1 } })
     .blur(0.8)
     .resize(target.width, target.height, { fit: "fill", kernel: "cubic" })
+    .toColourspace("b-w")
     .raw()
     .toBuffer();
+  if (feathered.length !== target.width * target.height) throw new Error(`mask has ${feathered.length / (target.width * target.height)} channels, expected 1`);
   const full = new Uint8Array(feathered.buffer, feathered.byteOffset, feathered.length);
   const bbox = boxOf(full, target.width, target.height);
   let sum = 0;
@@ -258,13 +261,30 @@ export async function maskPixels(maskPng: Buffer, width: number, height: number)
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
 }
 
+/**
+ * RGBA PNG built from raw RGB pixels and a raw 8-bit alpha plane. Done by hand
+ * because sharp's joinChannel does not mark the extra band as alpha and a
+ * greyscale overlay has no alpha for dest-in to use.
+ */
+export async function rgbaFromAlpha(rgb: Buffer, alpha: Uint8Array | Buffer, width: number, height: number): Promise<Buffer> {
+  const n = width * height;
+  if (rgb.length !== n * 3) throw new Error(`expected ${n * 3} RGB bytes, got ${rgb.length}`);
+  if (alpha.length !== n) throw new Error(`expected ${n} alpha bytes, got ${alpha.length}`);
+  const out = Buffer.alloc(n * 4);
+  for (let i = 0, o = 0, p = 0; i < n; i++, o += 4, p += 3) {
+    out[o] = rgb[p];
+    out[o + 1] = rgb[p + 1];
+    out[o + 2] = rgb[p + 2];
+    out[o + 3] = alpha[i];
+  }
+  return sharp(out, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 6 }).toBuffer();
+}
+
 /** RGBA PNG of the image with the mask as alpha. */
 export async function applyMask(image: Buffer, maskPng: Buffer): Promise<Buffer> {
-  const base = sharp(image).rotate().removeAlpha();
-  const meta = await base.metadata();
-  const width = meta.width ?? 0, height = meta.height ?? 0;
-  const mask = await sharp(maskPng).resize(width, height, { fit: "fill" }).toColourspace("b-w").raw().toBuffer();
-  return base.joinChannel(mask, { raw: { width, height, channels: 1 } }).png({ compressionLevel: 6 }).toBuffer();
+  const { data, info } = await sharp(image).rotate().removeAlpha().toColourspace("srgb").raw().toBuffer({ resolveWithObject: true });
+  const alpha = await maskPixels(maskPng, info.width, info.height);
+  return rgbaFromAlpha(data, alpha, info.width, info.height);
 }
 
 /**
