@@ -36,8 +36,13 @@ export class ImglySegmenter implements GarmentSegmenter {
           const { pathToFileURL } = require("node:url") as typeof import("node:url");
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           const path = require("node:path") as typeof import("node:path");
-          // The package defaults its resource folder to <cwd>/node_modules/...; resolve it from the module instead.
-          this.publicPath = pathToFileURL(path.dirname(require.resolve("@imgly/background-removal-node"))).href + "/";
+          // Resolve the package on the real filesystem from the project root. Inside Turbopack the
+          // bundler-provided require.resolve points at its own externals shim, not the dist folder,
+          // which is why the model resources were not found under `next dev`.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { createRequire } = require("node:module") as typeof import("node:module");
+          const projectRequire = createRequire(path.join(process.cwd(), "package.json"));
+          this.publicPath = pathToFileURL(path.dirname(projectRequire.resolve("@imgly/background-removal-node"))).href + "/";
           return mod.removeBackground;
         } catch (err) {
           console.warn("[segment:imgly] not available:", (err as Error).message);

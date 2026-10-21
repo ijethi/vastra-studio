@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Wordmark } from "@/components/shell/wordmark";
 import { SignInForm } from "./sign-in-form";
 import { CompareSlider } from "@/components/marketing/compare-slider";
@@ -10,6 +11,7 @@ import { getSessionContext } from "@/lib/auth/session";
 export const metadata = { title: "Sign in" };
 
 async function RedirectIfSignedIn() {
+  await connection();
   const ctx = await getSessionContext();
   if (ctx) redirect("/studio");
   return null;
