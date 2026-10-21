@@ -95,6 +95,20 @@ drizzle/          SQL migrations (generated with `pnpm db:generate`)
 scripts/          seed, migrate, worker
 ```
 
+## Base-model library
+
+Development ships illustrated placeholders for the model library. With a Gemini key, render the real photoreal library once (one woman per body type, skin tone and age, on every backdrop) and review the results before launch:
+
+```bash
+GEMINI_API_KEY=... pnpm tsx --conditions=react-server scripts/generate-base-model-library.ts
+```
+
+Renders go to the `library/` prefix in storage (picked up automatically by the pipeline) and ivory previews to `public/base-models`. Use `--only <model-id>` or `--backdrops studio-ivory,festive-marigold` to redo a subset.
+
+## Extra garment angles
+
+On a garment page, owners can add a back photo and a detail photo (up to five extra angles). Reel scenes use them: turn-away shots lean on the back photo and the fabric close-up on the detail photo.
+
 ## Commands
 
 ```bash
