@@ -1,84 +1,99 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------
-   Design tokens. Warm, editorial, image-first. Colours live here only;
-   components use the Tailwind utilities generated from @theme below.
+   Vastra Studio design tokens.
+   Direction: jewel-box. Indigo night for the frame, chalk for working
+   surfaces, rani pink as the one loud colour, marigold for value.
+   Nothing cream, nothing beige.
    ------------------------------------------------------------------ */
 :root {
-  --canvas: #f6f1e8;
-  --surface: #fffdf9;
-  --surface-2: #efe8db;
-  --surface-3: #e6ddcd;
-  --ink: #1d1a15;
-  --ink-2: #6b6459;
-  --ink-3: #9a9183;
-  --line: #e2d9ca;
-  --line-strong: #cfc3b0;
-  --accent: #c2561e;
-  --accent-hover: #a9481a;
-  --accent-soft: #f6e3d6;
-  --on-accent: #fffaf5;
-  --success: #5f7b5b;
-  --success-soft: #e3ebe0;
-  --warning: #b4791f;
-  --warning-soft: #f5e8cf;
-  --danger: #a63d2f;
-  --danger-soft: #f4dfdb;
-  --focus: #c2561e;
-  --shadow: 0 1px 2px rgba(29, 26, 21, 0.06), 0 8px 24px -12px rgba(29, 26, 21, 0.18);
-  --shadow-lg: 0 2px 4px rgba(29, 26, 21, 0.06), 0 24px 48px -20px rgba(29, 26, 21, 0.28);
+  --canvas: #f6f6f3;
+  --surface: #ffffff;
+  --surface-2: #eeedea;
+  --surface-3: #e3e1dc;
+  --ink: #15121e;
+  --ink-2: #5b5768;
+  --ink-3: #8e8a99;
+  --line: #e3e1dc;
+  --line-strong: #cbc7bf;
+  --accent: #e0127a;
+  --accent-hover: #c20e69;
+  --accent-soft: #fce4f0;
+  --on-accent: #ffffff;
+  --gold: #ffb000;
+  --gold-soft: #fff1cc;
+  --success: #0f766e;
+  --success-soft: #d9f0ec;
+  --warning: #b45309;
+  --warning-soft: #fdebd2;
+  --danger: #b91c1c;
+  --danger-soft: #fbe1e1;
+  --night: #15121e;
+  --night-2: #221b38;
+  --night-ink: #f3f1f7;
+  --night-ink-2: #aea8bf;
+  --night-line: #2e2746;
+  --focus: #e0127a;
+  --shadow: 0 1px 2px rgba(21, 18, 30, 0.05), 0 10px 30px -14px rgba(21, 18, 30, 0.22);
+  --shadow-lg: 0 2px 4px rgba(21, 18, 30, 0.06), 0 30px 60px -24px rgba(21, 18, 30, 0.35);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #14120f;
-    --surface: #1d1a16;
-    --surface-2: #26221c;
-    --surface-3: #312c25;
-    --ink: #f1ebe1;
-    --ink-2: #ada498;
-    --ink-3: #7d756a;
-    --line: #342f28;
-    --line-strong: #4a433a;
-    --accent: #e07a3f;
-    --accent-hover: #ea8e59;
-    --accent-soft: #3a261b;
-    --on-accent: #1a110b;
-    --success: #90ad8b;
-    --success-soft: #26312a;
-    --warning: #d9a24a;
-    --warning-soft: #352b1b;
-    --danger: #e07263;
-    --danger-soft: #3a2422;
-    --focus: #e07a3f;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
-    --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.4), 0 24px 48px -20px rgba(0, 0, 0, 0.7);
+    --canvas: #100d1a;
+    --surface: #17132a;
+    --surface-2: #1f1a33;
+    --surface-3: #2a2342;
+    --ink: #f3f1f7;
+    --ink-2: #b3adc2;
+    --ink-3: #7e7891;
+    --line: #2b2540;
+    --line-strong: #3d3657;
+    --accent: #ff3d9a;
+    --accent-hover: #ff5fae;
+    --accent-soft: #3a1530;
+    --on-accent: #1a0611;
+    --gold: #ffc233;
+    --gold-soft: #3a2c0a;
+    --success: #5eead4;
+    --success-soft: #0f2f2b;
+    --warning: #fbbf24;
+    --warning-soft: #332305;
+    --danger: #f87171;
+    --danger-soft: #3a1414;
+    --night: #0b0913;
+    --night-2: #1a1430;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.4), 0 30px 60px -24px rgba(0, 0, 0, 0.7);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --canvas: #14120f;
-  --surface: #1d1a16;
-  --surface-2: #26221c;
-  --surface-3: #312c25;
-  --ink: #f1ebe1;
-  --ink-2: #ada498;
-  --ink-3: #7d756a;
-  --line: #342f28;
-  --line-strong: #4a433a;
-  --accent: #e07a3f;
-  --accent-hover: #ea8e59;
-  --accent-soft: #3a261b;
-  --on-accent: #1a110b;
-  --success: #90ad8b;
-  --success-soft: #26312a;
-  --warning: #d9a24a;
-  --warning-soft: #352b1b;
-  --danger: #e07263;
-  --danger-soft: #3a2422;
-  --focus: #e07a3f;
+  --canvas: #100d1a;
+  --surface: #17132a;
+  --surface-2: #1f1a33;
+  --surface-3: #2a2342;
+  --ink: #f3f1f7;
+  --ink-2: #b3adc2;
+  --ink-3: #7e7891;
+  --line: #2b2540;
+  --line-strong: #3d3657;
+  --accent: #ff3d9a;
+  --accent-hover: #ff5fae;
+  --accent-soft: #3a1530;
+  --on-accent: #1a0611;
+  --gold: #ffc233;
+  --gold-soft: #3a2c0a;
+  --success: #5eead4;
+  --success-soft: #0f2f2b;
+  --warning: #fbbf24;
+  --warning-soft: #332305;
+  --danger: #f87171;
+  --danger-soft: #3a1414;
+  --night: #0b0913;
+  --night-2: #1a1430;
   color-scheme: dark;
 }
 
@@ -96,18 +111,25 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-night: var(--night);
+  --color-night-2: var(--night-2);
+  --color-night-ink: var(--night-ink);
+  --color-night-ink-2: var(--night-ink-2);
+  --color-night-line: var(--night-line);
 
-  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-manrope), "Segoe UI", system-ui, sans-serif;
 
-  --radius-card: 16px;
-  --radius-control: 10px;
+  --radius-card: 20px;
+  --radius-control: 14px;
   --radius-pill: 999px;
 
   --shadow-card: var(--shadow);
@@ -124,23 +146,23 @@
     background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-feature-settings: "cv11", "ss01", "liga";
+    font-feature-settings: "ss01", "liga", "tnum";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: var(--accent-soft);
-    color: var(--ink);
+    background: var(--accent);
+    color: var(--on-accent);
   }
   :focus-visible {
     outline: 2px solid var(--focus);
-    outline-offset: 2px;
-    border-radius: 6px;
+    outline-offset: 3px;
+    border-radius: 8px;
   }
   h1, h2, h3 {
     font-family: var(--font-display);
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
   img {
@@ -157,24 +179,25 @@
 @layer utilities {
   .display-xl {
     font-family: var(--font-display);
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
-    line-height: 1.02;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    font-variation-settings: "opsz" 144, "SOFT" 30;
+    font-size: clamp(2.75rem, 7vw, 5.5rem);
+    line-height: 0.98;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    font-variation-settings: "wdth" 95, "opsz" 96;
   }
   .display-lg {
     font-family: var(--font-display);
-    font-size: clamp(1.75rem, 3.2vw, 2.5rem);
-    line-height: 1.1;
-    letter-spacing: -0.015em;
+    font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+    line-height: 1.05;
+    font-weight: 700;
+    letter-spacing: -0.025em;
   }
   .eyebrow {
     font-size: 0.72rem;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--ink-2);
-    font-weight: 600;
+    font-weight: 700;
   }
   .card {
     background: var(--surface);
@@ -184,7 +207,7 @@
   }
   .image-frame {
     background: var(--surface-2);
-    border-radius: 12px;
+    border-radius: 14px;
     overflow: hidden;
     position: relative;
   }
@@ -196,6 +219,10 @@
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
     pointer-events: none;
   }
+  .night {
+    background: radial-gradient(120% 90% at 85% 0%, var(--night-2) 0%, var(--night) 60%);
+    color: var(--night-ink);
+  }
   .shimmer {
     background: linear-gradient(100deg, var(--surface-2) 30%, var(--surface-3) 50%, var(--surface-2) 70%);
     background-size: 200% 100%;
@@ -206,12 +233,15 @@
     to { background-position: -200% 0; }
   }
   .fade-up {
-    animation: fade-up 0.45s var(--ease-out-soft) both;
+    animation: fade-up 0.5s var(--ease-out-soft) both;
   }
   @keyframes fade-up {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }
+  .pill {
+    border-radius: var(--radius-pill);
+  }
 }

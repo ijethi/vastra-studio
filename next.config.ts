@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   // Node-native packages must not be bundled by Turbopack for the server.
   serverExternalPackages: [
     "sharp",
+    "@imgly/background-removal-node",
+    "onnxruntime-node",
     "@electric-sql/pglite",
     "pg",
     "bullmq",

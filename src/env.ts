@@ -30,6 +30,12 @@ const schema = z.object({
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optional,
   VISION_PROVIDER: z.enum(["mock", "claude"]).default("mock"),
   ANTHROPIC_API_KEY: optional,
+  /** Garment cut-out: auto = bundled ONNX model when it loads, else the sharp heuristic. */
+  SEGMENTER: z.enum(["auto", "imgly", "heuristic", "mock"]).default("auto"),
+  /** Exact-garment mode generator for mannequin photos. */
+  PERSON_PROVIDER: z.enum(["mock", "gemini"]).default("mock"),
+  GEMINI_API_KEY: optional,
+  GEMINI_IMAGE_MODEL: z.string().default("gemini-nano-banana-2.1"),
 
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,

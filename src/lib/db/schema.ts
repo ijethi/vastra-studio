@@ -154,8 +154,13 @@ export type GarmentCategory =
   | "lehenga"
   | "unknown";
 
+/** How the garment was photographed. Mannequin photos qualify for exact-garment mode. */
+export type PhotoType = "mannequin" | "flat-lay" | "hanger" | "on-model";
+
 export type GarmentAnalysis = {
   category: GarmentCategory;
+  /** Missing on rows analysed before exact-garment mode existed; readers treat that as unknown. */
+  photoType?: PhotoType;
   title: string;
   colour: string;
   secondaryColours: string[];
