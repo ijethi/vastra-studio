@@ -12,7 +12,7 @@ import type { ShareTarget } from "@/lib/dal/share";
  * Creates an expiring public link for a garment or one image and hands it to
  * WhatsApp, or copies it. Links last 30 days and can be revoked from settings.
  */
-export function ShareLinkButton({ targetType, targetId, title, size = "sm", variant = "secondary" }: { targetType: ShareTarget; targetId: string; title: string; size?: "sm" | "md" | "lg"; variant?: "primary" | "secondary" | "ghost" }) {
+export function ShareLinkButton({ targetType, targetId, title, size = "sm", variant = "secondary", iconOnly = false }: { targetType: ShareTarget; targetId: string; title: string; size?: "sm" | "md" | "lg" | "icon"; variant?: "primary" | "secondary" | "ghost"; iconOnly?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [url, setUrl] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -33,8 +33,8 @@ export function ShareLinkButton({ targetType, targetId, title, size = "sm", vari
 
   return (
     <>
-      <Button size={size} variant={variant} onClick={openDialog}>
-        <Link2 className="h-4 w-4" aria-hidden="true" /> Share link
+      <Button size={iconOnly ? "icon" : size} variant={variant} onClick={openDialog} aria-label={iconOnly ? "Share link" : undefined}>
+        <Link2 className="h-4 w-4" aria-hidden="true" /> {iconOnly ? null : "Share link"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Share this look" description="Anyone with the link can see it for 30 days. Customers can message you on WhatsApp from the page.">

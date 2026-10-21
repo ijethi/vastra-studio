@@ -122,8 +122,8 @@ export function ImageCard({
           </span>
         ) : null}
       </div>
-      <figcaption className="mt-2 flex items-center justify-between gap-2">
-        <ShareLinkButton targetType="image" targetId={image.id} title={alt} size="sm" variant="ghost" />
+      <figcaption className="mt-2 flex items-center justify-between gap-1">
+        <ShareLinkButton targetType="image" targetId={image.id} title={alt} variant="ghost" iconOnly />
         <span className="flex items-center gap-1">
           <Button
             variant={accepted ? "primary" : "secondary"}
