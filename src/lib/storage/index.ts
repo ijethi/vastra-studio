@@ -32,6 +32,12 @@ export const keys = {
   tenantPrefix: (tenantId: string) => `tenants/${tenantId}/`,
   garmentPrefix: (tenantId: string, garmentId: string) => `tenants/${tenantId}/garments/${garmentId}/`,
   jobPrefix: (tenantId: string, jobId: string) => `tenants/${tenantId}/jobs/${jobId}/`,
+  reelStill: (tenantId: string, reelId: string, assetId: string) => `tenants/${tenantId}/reels/${reelId}/stills/${assetId}.jpg`,
+  reelStillThumb: (tenantId: string, reelId: string, assetId: string) => `tenants/${tenantId}/reels/${reelId}/stills/${assetId}.thumb.jpg`,
+  reelClip: (tenantId: string, reelId: string, assetId: string) => `tenants/${tenantId}/reels/${reelId}/clips/${assetId}.mp4`,
+  reelOutput: (tenantId: string, reelId: string) => `tenants/${tenantId}/reels/${reelId}/reel.mp4`,
+  reelCover: (tenantId: string, reelId: string) => `tenants/${tenantId}/reels/${reelId}/cover.jpg`,
+  reelPrefix: (tenantId: string, reelId: string) => `tenants/${tenantId}/reels/${reelId}/`,
 };
 
 export const READ_URL_TTL_SECONDS = 60 * 60; // 1 hour

@@ -3,7 +3,8 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Check, Download, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Check, Clapperboard, Download, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
@@ -123,7 +124,14 @@ export function ImageCard({
         ) : null}
       </div>
       <figcaption className="mt-2 flex items-center justify-between gap-1">
-        <ShareLinkButton targetType="image" targetId={image.id} title={alt} variant="ghost" iconOnly />
+        <span className="flex items-center">
+          <ShareLinkButton targetType="image" targetId={image.id} title={alt} variant="ghost" iconOnly />
+          <Button asChild variant="ghost" size="icon" aria-label="Make a reel from this image">
+            <Link href={`/reels/new?image=${image.id}`}>
+              <Clapperboard className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </span>
         <span className="flex items-center gap-1">
           <Button
             variant={accepted ? "primary" : "secondary"}

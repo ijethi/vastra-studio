@@ -55,7 +55,12 @@ export default defineConfig({
       TRYON_PROVIDERS: "mock",
       VISION_PROVIDER: "mock",
       RESEND_API_KEY: "",
-      TRIAL_CREDITS: "100",
+      // The reels spec needs 60 + 5 x 40 credits on top of one image run.
+      TRIAL_CREDITS: process.env.E2E_REELS === "1" ? "400" : "100",
+      // A second `next dev` beside a running one needs its own build directory (see next.config.ts).
+      NEXT_DIST_DIR: process.env.NEXT_DIST_DIR ?? ".data/e2e-next",
+      VIDEO_PROVIDERS: "mock",
+      STORYBOARD_PROVIDER: "mock",
     },
   },
 });

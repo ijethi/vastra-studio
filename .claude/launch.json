@@ -6,6 +6,15 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "port": 3000
+    },
+    {
+      "name": "vastra-dev-isolated",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set NEXT_DIST_DIR=.data/dev2-next&& set PGLITE_DIR=./.data/dev2-pg&& set LOCAL_STORAGE_DIR=./.data/dev2-storage&& set APP_URL=http://localhost:3011&& set E2E_TEST=1&& set TRIAL_CREDITS=400&& pnpm dev --port 3011"
+      ],
+      "port": 3011
     }
   ]
 }

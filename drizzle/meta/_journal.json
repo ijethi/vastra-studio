@@ -15,6 +15,13 @@
       "when": 1792590780311,
       "tag": "0001_oval_charles_xavier",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792604282170,
+      "tag": "0002_calm_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

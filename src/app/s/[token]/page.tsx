@@ -29,7 +29,13 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
 
   let title = "";
   let images: Array<{ id: string; url: string; width: number; height: number }> = [];
-  if (link.targetType === "image") {
+  let reel: { url: string; coverUrl: string | null } | null = null;
+  if (link.targetType === "reel") {
+    const row = await db.query.reelJobs.findFirst({ where: eq(schema.reelJobs.id, link.targetId), with: { garment: true } });
+    if (!row || row.tenantId !== link.tenantId || !row.outputKey || row.garment.deletedAt) notFound();
+    title = row.garment.title;
+    reel = { url: await storage.signRead(row.outputKey, READ_URL_TTL_SECONDS), coverUrl: row.coverKey ? await storage.signRead(row.coverKey, READ_URL_TTL_SECONDS) : null };
+  } else if (link.targetType === "image") {
     const img = await db.query.generatedImages.findFirst({ where: eq(schema.generatedImages.id, link.targetId), with: { garment: true } });
     if (!img || img.tenantId !== link.tenantId) notFound();
     title = img.garment.title;
@@ -53,6 +59,11 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
         <p className="eyebrow mb-2">{org.name}</p>
         <h1 className="display-lg">{title}</h1>
       </header>
+      {reel ? (
+        <div className="image-frame mx-auto aspect-[9/16] max-w-sm bg-night shadow-[var(--shadow-lg)]">
+          <video src={reel.url} poster={reel.coverUrl ?? undefined} controls playsInline autoPlay muted loop className="h-full w-full object-cover" aria-label={`${title} reel`} />
+        </div>
+      ) : null}
       <ul className={images.length === 1 ? "mx-auto max-w-sm" : "grid grid-cols-2 gap-3 sm:grid-cols-3"}>
         {images.map((img, i) => (
           <li key={img.id} className="image-frame aspect-[2/3] shadow-[var(--shadow)]">
@@ -70,7 +81,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           <MessageCircle className="h-5 w-5" aria-hidden="true" /> Ask on WhatsApp
         </a>
       ) : null}
-      <p className="mt-10 text-center text-xs text-ink-3">Images made with the help of AI. The garment is as photographed by the boutique.</p>
+      <p className="mt-10 text-center text-xs text-ink-3">{reel ? "Reel" : "Images"} made with the help of AI. The garment is as photographed by the boutique.</p>
     </>
   );
 }

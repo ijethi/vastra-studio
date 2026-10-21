@@ -15,6 +15,7 @@ import { getGarment, setGarmentAnalysis, setGarmentStatus } from "@/lib/dal/garm
 import { getJobForWorker, insertImage, setJobProgress, updateJob } from "@/lib/dal/jobs";
 import { creditTenant, getTenantSettings } from "@/lib/dal/tenants";
 import { getQueue, type JobPayload } from "@/lib/queue";
+import { runReelAnimate, runReelStills } from "@/lib/jobs/reels";
 import { env } from "@/env";
 import type { GarmentAnalysis } from "@/lib/db/schema";
 
@@ -23,6 +24,8 @@ const MAX_RETRIES_PER_IMAGE = 1;
 
 export async function handleJob(payload: JobPayload): Promise<void> {
   if (payload.type === "analyze") return runAnalyze(payload.tenantId, payload.garmentId);
+  if (payload.type === "reel-stills") return runReelStills(payload.reelId);
+  if (payload.type === "reel-animate") return runReelAnimate(payload.reelId);
   return runGenerate(payload.jobId);
 }
 
@@ -275,5 +278,12 @@ export async function startWorker(concurrency = 2): Promise<void> {
       if (job) await queue.enqueue({ type: "generate", tenantId: job.tenantId, jobId: id });
     }
     if (ids.length) console.log(`[worker] re-queued ${ids.length} unfinished job(s)`);
+    const { listUnfinishedReels } = await import("@/lib/dal/reels");
+    const reels = await listUnfinishedReels();
+    for (const reel of reels) {
+      const type = reel.status === "queued" || reel.status === "stills" ? "reel-stills" : "reel-animate";
+      await queue.enqueue({ type, tenantId: reel.tenantId, reelId: reel.id });
+    }
+    if (reels.length) console.log(`[worker] re-queued ${reels.length} unfinished reel(s)`);
   }
 }

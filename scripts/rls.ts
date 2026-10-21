@@ -22,6 +22,8 @@ const RLS_TABLES = [
   "payments",
   "share_links",
   "audit_log",
+  "reel_jobs",
+  "reel_assets",
 ];
 
 async function main(): Promise<void> {

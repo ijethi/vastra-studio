@@ -2,3 +2,5 @@ ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
   - onnxruntime-node
+onlyBuiltDependencies:
+  - ffmpeg-static

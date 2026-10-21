@@ -172,6 +172,20 @@ CREATE POLICY tenant_isolation ON share_links
   USING (tenant_id = app_tenant_id())
   WITH CHECK (tenant_id = app_tenant_id());
 
+ALTER TABLE reel_jobs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON reel_jobs;
+CREATE POLICY tenant_isolation ON reel_jobs
+  FOR ALL TO vastra_app
+  USING (tenant_id = app_tenant_id())
+  WITH CHECK (tenant_id = app_tenant_id());
+
+ALTER TABLE reel_assets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON reel_assets;
+CREATE POLICY tenant_isolation ON reel_assets
+  FOR ALL TO vastra_app
+  USING (tenant_id = app_tenant_id())
+  WITH CHECK (tenant_id = app_tenant_id());
+
 -- audit_log.tenant_id is nullable: platform-level events (admin console,
 -- provider kill switches) are written with tenant_id NULL. Tenants may read
 -- only their own rows; they may append their own rows or platform rows, and
@@ -195,7 +209,7 @@ COMMIT;
 --   SELECT relname, relrowsecurity FROM pg_class
 --    WHERE relname IN ('garments','generation_jobs','generated_images',
 --                      'credit_ledger','payments','share_links','audit_log',
---                      'tenant_settings');
+--                      'tenant_settings','reel_jobs','reel_assets');
 --   SELECT * FROM pg_policies WHERE schemaname = 'public';
 -- Smoke test (as vastra_app):
 --   BEGIN; SELECT count(*) FROM garments;                       -- 0, no tenant set

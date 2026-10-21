@@ -5,7 +5,7 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/ids";
 import { env } from "@/env";
 
-export type ShareTarget = "image" | "garment";
+export type ShareTarget = "image" | "garment" | "reel";
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 

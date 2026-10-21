@@ -28,8 +28,15 @@ export class BullQueue implements JobQueue {
   }
 
   async enqueue(payload: JobPayload): Promise<void> {
-    const jobId = payload.type === "generate" ? `generate:${payload.jobId}` : `analyze:${payload.garmentId}`;
-    await this.queue.add(payload.type, payload, { jobId, priority: payload.type === "analyze" ? 1 : 5 });
+    const jobId =
+      payload.type === "generate"
+        ? `generate:${payload.jobId}`
+        : payload.type === "analyze"
+          ? `analyze:${payload.garmentId}`
+          : `${payload.type}:${payload.reelId}`;
+    // Reels take minutes; they queue behind image runs so the studio stays responsive.
+    const priority = payload.type === "analyze" ? 1 : payload.type === "generate" ? 5 : 10;
+    await this.queue.add(payload.type, payload, { jobId, priority });
   }
 
   async start(handler: JobHandler, concurrency: number): Promise<void> {

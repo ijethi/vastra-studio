@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Download, Heart, RefreshCw, Share2, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Clapperboard, Download, Heart, RefreshCw, Share2, Sparkles, SlidersHorizontal } from "lucide-react";
 import { Collapsible } from "radix-ui";
 import type { BaseModel, Backdrop, BodyType, SkinTone, AgeRange } from "@/lib/base-models/catalog";
 import { BODY_TYPES, SKIN_TONES, AGE_RANGES } from "@/lib/base-models/catalog";
@@ -554,7 +554,7 @@ export function ResultCard({ image, alt, title }: { image: JobEvent["images"][nu
           <Heart className={cn("h-4 w-4", loved && "fill-current")} aria-hidden="true" />
         </button>
       </div>
-      <figcaption className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
+      <figcaption className="mt-2 grid grid-cols-2 gap-2">
         <Button size="sm" onClick={share} disabled={sharing}>
           {sharing ? <Spinner /> : <Share2 className="h-4 w-4" aria-hidden="true" />} Share
         </Button>
@@ -562,6 +562,11 @@ export function ResultCard({ image, alt, title }: { image: JobEvent["images"][nu
           <a href={`/api/images/${image.id}/download?size=ig-portrait`}>
             <Download className="h-4 w-4" aria-hidden="true" /> Save
           </a>
+        </Button>
+        <Button asChild size="sm" variant="night">
+          <Link href={`/reels/new?image=${image.id}`}>
+            <Clapperboard className="h-4 w-4" aria-hidden="true" /> Reel
+          </Link>
         </Button>
         <ShareLinkButton targetType="image" targetId={image.id} title={title} size="sm" variant="ghost" />
       </figcaption>

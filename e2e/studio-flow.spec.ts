@@ -13,6 +13,8 @@ const SAMPLE = path.join(__dirname, "..", "public", "samples", "sample-kurta.jpg
 const RUN = Date.now().toString(36);
 const EMAIL = `e2e-${RUN}@example.com`;
 const BOUTIQUE = `E2E Boutique ${RUN}`;
+// playwright.config.ts grants more trial credits when the reels spec is enabled.
+const TRIAL = process.env.E2E_REELS === "1" ? 400 : 100;
 
 let context: BrowserContext;
 let page: Page;
@@ -69,14 +71,14 @@ test("signs in with a one-time code", async () => {
   await expect(page.getByRole("heading", { name: "Name your boutique" })).toBeVisible();
 });
 
-test("creates a boutique and lands in the studio with 100 credits", async () => {
+test(`creates a boutique and lands in the studio with ${TRIAL} credits`, async () => {
   await page.getByLabel("Boutique name").fill(BOUTIQUE);
   await page.getByRole("button", { name: "Open my studio" }).click();
 
   await expect(page).toHaveURL(/\/studio$/);
   await expect(page.getByRole("heading", { level: 1, name: "Studio" })).toBeVisible();
   await expect(page.getByText(BOUTIQUE).first()).toBeVisible();
-  await expect(credits()).toContainText("100");
+  await expect(credits()).toContainText(String(TRIAL));
 });
 
 test("uploads a garment and the photo is made automatically for 25 credits", async () => {
@@ -91,7 +93,7 @@ test("uploads a garment and the photo is made automatically for 25 credits", asy
   const results = page.locator('img[alt*=", variation "]');
   await expect(results).toHaveCount(2, { timeout: 150_000 });
   await expect(page.getByRole("button", { name: "Make again" })).toBeVisible({ timeout: 60_000 });
-  await expect(credits()).toContainText("75");
+  await expect(credits()).toContainText(String(TRIAL - 25));
 
   garmentTitle = (await page.getByRole("heading", { level: 2 }).first().textContent())?.trim() ?? "";
   expect(garmentTitle.length).toBeGreaterThan(0);

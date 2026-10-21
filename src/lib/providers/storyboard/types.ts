@@ -1,0 +1,50 @@
+import type { GarmentAnalysis, ReelShotType, ReelVibe } from "@/lib/db/schema";
+
+export type StoryboardInput = {
+  /** JPEG/PNG bytes of the finished on-model image the scenes are drawn from. */
+  heroImage: Buffer;
+  garmentAnalysis: GarmentAnalysis | null;
+  garmentTitle: string;
+  vibe: ReelVibe;
+  /** How many scene stills to make; scenes beyond the vibe's list are not generated. */
+  count: number;
+  /** Per-still ceiling. */
+  timeoutMs: number;
+  /** Progress callback as each still lands. */
+  onStill?: (done: number, total: number) => void | Promise<void>;
+};
+
+export type StoryboardStill = {
+  /** JPEG bytes, portrait 9:16. */
+  image: Buffer;
+  width: number;
+  height: number;
+  sceneLabel: string;
+  shotType: ReelShotType;
+  /** The scene prompt that produced it (stored with the asset). */
+  prompt: string;
+  provider: string;
+  seed: number | null;
+  costUsd?: number;
+};
+
+export class StoryboardProviderError extends Error {
+  constructor(
+    public provider: string,
+    message: string,
+    public retryable: boolean,
+    public status?: number,
+  ) {
+    super(`[${provider}] ${message}`);
+  }
+}
+
+export interface StoryboardProvider {
+  readonly name: string;
+  isAvailable(): Promise<boolean>;
+  /** Scene stills in scene order. A failed scene is skipped, not thrown, unless every scene fails. */
+  generate(input: StoryboardInput): Promise<StoryboardStill[]>;
+}
+
+export const STILL_WIDTH = 1080;
+export const STILL_HEIGHT = 1920;

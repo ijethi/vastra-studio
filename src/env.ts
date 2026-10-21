@@ -36,6 +36,13 @@ const schema = z.object({
   PERSON_PROVIDER: z.enum(["mock", "gemini"]).default("mock"),
   GEMINI_API_KEY: optional,
   GEMINI_IMAGE_MODEL: z.string().default("gemini-nano-banana-2.1"),
+  /** Reel scene stills: mock (offline re-framing of the hero image) | gemini (Gemini image model). */
+  STORYBOARD_PROVIDER: z.enum(["mock", "gemini"]).default("mock"),
+  /** Reel clips, comma-separated in priority order: mock | kling | gemini. */
+  VIDEO_PROVIDERS: z.string().default("mock"),
+  FAL_KEY: optional,
+  FAL_KLING_MODEL: z.string().default("fal-ai/kling-video/v3/standard/image-to-video"),
+  GEMINI_VIDEO_MODEL: z.string().default("gemini-omni-1.1-flash"),
 
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
@@ -85,3 +92,10 @@ export type TryOnProviderName = "mock" | "fashn" | "google";
 export const tryOnProviderOrder = env.TRYON_PROVIDERS.split(",")
   .map((p) => p.trim())
   .filter((p): p is TryOnProviderName => p === "mock" || p === "fashn" || p === "google");
+
+export type VideoProviderName = "mock" | "kling" | "gemini";
+
+/** Video providers in priority order (primary first). */
+export const videoProviderOrder = env.VIDEO_PROVIDERS.split(",")
+  .map((p) => p.trim())
+  .filter((p): p is VideoProviderName => p === "mock" || p === "kling" || p === "gemini");

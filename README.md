@@ -27,6 +27,8 @@ In development everything runs in one process: an embedded Postgres (PGlite) in 
 | `GOOGLE_CLOUD_PROJECT` + `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Enables the Google adapter |
 | `VISION_PROVIDER=claude` + `ANTHROPIC_API_KEY` | Claude vision for garment analysis and the output quality gate |
 | `PERSON_PROVIDER=gemini` + `GEMINI_API_KEY` | Gemini image generation draws the model around mannequin garments (exact-garment mode); `GEMINI_IMAGE_MODEL` picks the model |
+| `STORYBOARD_PROVIDER=gemini` + `GEMINI_API_KEY` | Gemini image model sketches the nine reel scenes from the hero image (`mock` re-frames the hero image offline) |
+| `VIDEO_PROVIDERS=kling,gemini` + `FAL_KEY` / `GEMINI_API_KEY` | Reel clips: Kling 3 image-to-video through fal.ai's queue API, Gemini Omni Flash through the Interactions API; `mock` renders a Ken Burns pan with the bundled ffmpeg |
 | `SEGMENTER=auto\|imgly\|heuristic\|mock` | Garment cut-out: the bundled CPU background-removal model (default when it loads), a sharp colour heuristic, or a fixed mask for tests |
 | `DATABASE_URL` | Managed Postgres instead of PGlite (migrations run at boot) |
 | `REDIS_URL` | BullMQ queue; run `pnpm worker` as a separate process |
@@ -62,6 +64,15 @@ pnpm tsx --conditions=react-server scripts/try-exact-mode.ts
 ```
 
 Pass another photo path, `--segmenter=heuristic`, `--model=<base model id>` or `--backdrop=<id>` to vary the run.
+
+## Reels
+
+A finished on-model image becomes a 9:16 Instagram reel in two paid steps, both offline-capable (`src/lib/jobs/reels.ts`, UI at `/reels/new?image=<id>`):
+
+1. **Scenes, 60 credits.** The owner picks a vibe (Everyday, Festive, Editorial; scene lists in `src/lib/reels/scenes.ts`) and the storyboard provider (`src/lib/providers/storyboard/`) sketches nine stills from the hero image, one scene prompt each. Every still goes through the same vision gate as the image pipeline against the original garment photo; a still that repaints the garment is never shown and its share (6 credits) is refunded.
+2. **Clips, 40 credits each.** The owner taps three to six stills (the arc wide → full body → movement → detail → portrait is preselected, `src/lib/reels/arc.ts`), optionally adds a caption with the price, and confirms. Each still is animated into a five-second clip by the first healthy video provider (`src/lib/providers/video/`, failover like try-on, motion prompts in `prompts.ts` with the guide's negative prompt). ffmpeg (`ffmpeg-static`) then stitches the clips with 0.4 s dissolves, a slight warm grade, the caption and a two-second end card with the boutique name (`src/lib/reels/assemble.ts`). A failed clip is refunded on its own; the reel still finishes with the rest.
+
+Reels get their own tables (`reel_jobs`, `reel_assets`), live progress at `/api/reels/<id>/events`, an MP4 download at `/api/reels/<id>/download`, and public share links (`targetType: "reel"`). The flow resumes from `/reels/<id>` and the garment page lists past reels.
 
 ## Architecture in one paragraph
 
@@ -108,7 +119,13 @@ pnpm worker         # standalone worker (REDIS_URL required)
 pnpm exec playwright install chromium   # once per machine; CI uses --with-deps
 ```
 
-Next 16 holds a lock on `.next/dev`, so stop any other `pnpm dev` running in this folder before `pnpm test:e2e`.
+The reel flow has its own spec, `e2e/reels.spec.ts`, skipped unless `E2E_REELS=1` because the mock clips are rendered with ffmpeg and the run takes a few minutes; the config then grants 400 trial credits (60 for the scenes, 200 for five clips, on top of one 25-credit image run).
+
+```bash
+E2E_REELS=1 pnpm test:e2e
+```
+
+The e2e server builds into `.data/e2e-next` (`NEXT_DIST_DIR`, honoured by `next.config.ts`), so it can run beside a `pnpm dev` that holds the lock on `.next/dev`.
 
 ## Deployment
 

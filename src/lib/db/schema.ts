@@ -334,7 +334,7 @@ export const shareLinks = pgTable(
     tenantId: text("tenant_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    targetType: text("target_type").notNull(), // image | garment
+    targetType: text("target_type").notNull(), // image | garment | reel
     targetId: text("target_id").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -343,6 +343,102 @@ export const shareLinks = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("share_tenant_idx").on(t.tenantId)],
+);
+
+/* ------------------------------------------------------------------ */
+/* Reels: scene stills from one hero image, animated and assembled.     */
+/* ------------------------------------------------------------------ */
+
+export type ReelVibe = "everyday" | "festive" | "editorial";
+
+export type ReelStatus =
+  | "queued"
+  | "stills"
+  | "selecting"
+  | "animating"
+  | "assembling"
+  | "completed"
+  | "partially_completed"
+  | "failed";
+
+export const reelJobs = pgTable(
+  "reel_jobs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    garmentId: text("garment_id")
+      .notNull()
+      .references(() => garments.id, { onDelete: "cascade" }),
+    /** The finished on-model image the stills are drawn from. */
+    sourceImageId: text("source_image_id")
+      .notNull()
+      .references(() => generatedImages.id, { onDelete: "cascade" }),
+    vibe: text("vibe").$type<ReelVibe>().notNull(),
+    status: text("status").$type<ReelStatus>().notNull().default("queued"),
+    progress: integer("progress").notNull().default(0),
+    statusMessage: text("status_message"),
+    creditsCharged: integer("credits_charged").notNull().default(0),
+    creditsRefunded: integer("credits_refunded").notNull().default(0),
+    /** Still asset ids in playback order, set when the owner confirms. */
+    selectedStillIds: jsonb("selected_still_ids").$type<string[] | null>(),
+    /** Optional text burned into the reel (garment title, price). */
+    caption: text("caption"),
+    outputKey: text("output_key"),
+    coverKey: text("cover_key"),
+    durationSec: real("duration_sec"),
+    error: text("error"),
+    /** Dedupes the start request (double tap, flaky network). */
+    idempotencyKey: text("idempotency_key"),
+    /** Dedupes the confirm request. */
+    confirmKey: text("confirm_key"),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("reels_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("reels_garment_idx").on(t.garmentId),
+    index("reels_status_idx").on(t.status),
+    uniqueIndex("reels_idempotency_idx").on(t.tenantId, t.idempotencyKey),
+  ],
+);
+
+export type ReelAssetKind = "still" | "clip";
+export type ReelShotType = "wide-hook" | "full-body" | "movement" | "detail" | "hero-portrait";
+
+export const reelAssets = pgTable(
+  "reel_assets",
+  {
+    id: text("id").primaryKey(),
+    reelJobId: text("reel_job_id")
+      .notNull()
+      .references(() => reelJobs.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<ReelAssetKind>().notNull(),
+    storageKey: text("storage_key").notNull(),
+    thumbKey: text("thumb_key"),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    durationSec: real("duration_sec"),
+    sceneLabel: text("scene_label").notNull(),
+    shotType: text("shot_type").$type<ReelShotType>().notNull(),
+    /** The scene prompt for a still; the motion prompt for a clip. */
+    prompt: text("prompt").notNull(),
+    provider: text("provider").notNull(),
+    gateVerdict: jsonb("gate_verdict").$type<GateVerdict | null>(),
+    /** For a clip: the still it was animated from. */
+    sourceAssetId: text("source_asset_id"),
+    orderIndex: integer("order_index").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("reel_assets_reel_idx").on(t.reelJobId), index("reel_assets_tenant_idx").on(t.tenantId)],
 );
 
 export const auditLog = pgTable(
@@ -383,7 +479,18 @@ export const imageRelations = relations(generatedImages, ({ one }) => ({
   garment: one(garments, { fields: [generatedImages.garmentId], references: [garments.id] }),
 }));
 
+export const reelRelations = relations(reelJobs, ({ one, many }) => ({
+  garment: one(garments, { fields: [reelJobs.garmentId], references: [garments.id] }),
+  sourceImage: one(generatedImages, { fields: [reelJobs.sourceImageId], references: [generatedImages.id] }),
+  assets: many(reelAssets),
+}));
+export const reelAssetRelations = relations(reelAssets, ({ one }) => ({
+  reel: one(reelJobs, { fields: [reelAssets.reelJobId], references: [reelJobs.id] }),
+}));
+
 export type Garment = typeof garments.$inferSelect;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 export type GeneratedImage = typeof generatedImages.$inferSelect;
 export type TenantSettings = typeof tenantSettings.$inferSelect;
+export type ReelJob = typeof reelJobs.$inferSelect;
+export type ReelAsset = typeof reelAssets.$inferSelect;
