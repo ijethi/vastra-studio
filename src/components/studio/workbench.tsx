@@ -18,6 +18,7 @@ import { getGarmentSummary, type GarmentSummary } from "@/app/actions/studio";
 import type { JobEvent } from "@/app/api/jobs/[id]/events/route";
 import { cn } from "@/lib/cn";
 import { creditsForRun } from "@/lib/dal/pricing";
+import { ShareLinkButton } from "@/components/share/share-dialog";
 
 type Props = {
   baseModels: BaseModel[];
@@ -553,7 +554,7 @@ export function ResultCard({ image, alt, title }: { image: JobEvent["images"][nu
           <Heart className={cn("h-4 w-4", loved && "fill-current")} aria-hidden="true" />
         </button>
       </div>
-      <figcaption className="mt-2 grid grid-cols-2 gap-2">
+      <figcaption className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
         <Button size="sm" onClick={share} disabled={sharing}>
           {sharing ? <Spinner /> : <Share2 className="h-4 w-4" aria-hidden="true" />} Share
         </Button>
@@ -562,6 +563,7 @@ export function ResultCard({ image, alt, title }: { image: JobEvent["images"][nu
             <Download className="h-4 w-4" aria-hidden="true" /> Save
           </a>
         </Button>
+        <ShareLinkButton targetType="image" targetId={image.id} title={title} size="sm" variant="ghost" />
       </figcaption>
     </figure>
   );
