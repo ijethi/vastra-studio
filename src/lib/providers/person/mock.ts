@@ -36,6 +36,7 @@ export class MockPersonGenerator implements PersonGenerator {
       height: PERSON_CANVAS.height,
       placement: placed.placement,
       canvasMask: placed.canvasMask,
+      garmentLayer: placed.layer,
       seed: hints.seed,
       provider: this.name,
       costUsd: 0,

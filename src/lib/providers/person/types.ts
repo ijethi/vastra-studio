@@ -35,6 +35,8 @@ export type PersonGenOutput = {
   placement: MaskBox;
   /** Mask in canvas coordinates (greyscale PNG, canvas size). */
   canvasMask: Buffer;
+  /** The placed cut-out (RGBA PNG, canvas size): the reference the exact-match check compares against. */
+  garmentLayer: Buffer;
   seed: number;
   provider: string;
   costUsd?: number;

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { eq } from "drizzle-orm";
 import { MessageCircle } from "lucide-react";
 import { resolveShareToken, getBoutiqueContact } from "@/lib/dal/share";
@@ -15,7 +16,9 @@ import { Skeleton } from "@/components/ui/primitives";
 export const metadata: Metadata = { title: "Shared look", robots: { index: false, follow: false } };
 
 /** Public page behind an expiring share link. Shows only what the boutique chose to share. */
-async function Shared({ token }: { token: string }) {
+async function Shared({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  await connection(); // public page with no cookies: mark it request-time so expiring URLs are never prerendered
   const link = await resolveShareToken(token);
   if (!link) notFound();
   const db = await getDb();
@@ -72,8 +75,7 @@ async function Shared({ token }: { token: string }) {
   );
 }
 
-export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+export default function SharePage({ params }: { params: Promise<{ token: string }> }) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 py-6">
       <Link href="/" className="inline-block self-start">
@@ -88,7 +90,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             </div>
           }
         >
-          <Shared token={token} />
+          <Shared params={params} />
         </Suspense>
       </main>
     </div>

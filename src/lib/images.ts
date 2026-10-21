@@ -1,6 +1,8 @@
 import "server-only";
 import sharp, { type Metadata } from "sharp";
 import { MAX_PIXELS } from "@/lib/storage";
+import { kmeans, labDistance, maskPixels, rgbToLab } from "@/lib/providers/segment/mask";
+import type { MaskBox } from "@/lib/providers/segment/types";
 
 export class InvalidImageError extends Error {}
 
