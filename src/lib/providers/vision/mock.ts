@@ -43,7 +43,8 @@ export class MockVisionProvider implements VisionProvider {
   async assessOutput({ outputImage }: { garmentImage: Buffer; outputImage: Buffer; analysis: GarmentAnalysis | null }): Promise<GateVerdict> {
     const h = hashBuffer(outputImage);
     // Roughly 1 in 12 fails so the retry path is exercised in development.
-    const fail = h % 12 === 0;
+    // End-to-end runs need a deterministic pass so the suite can assert on counts.
+    const fail = process.env.E2E_TEST === "1" ? false : h % 12 === 0;
     const score = fail ? 0.42 + (h % 20) / 100 : 0.78 + (h % 18) / 100;
     return {
       pass: !fail,
