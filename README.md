@@ -26,6 +26,8 @@ In development everything runs in one process: an embedded Postgres (PGlite) in 
 | `TRYON_PROVIDERS=fashn,google` + `FASHN_API_KEY` | FASHN v1.6 as primary try-on, Google Virtual Try-On as fallback |
 | `GOOGLE_CLOUD_PROJECT` + `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Enables the Google adapter |
 | `VISION_PROVIDER=claude` + `ANTHROPIC_API_KEY` | Claude vision for garment analysis and the output quality gate |
+| `PERSON_PROVIDER=gemini` + `GEMINI_API_KEY` | Gemini image generation draws the model around mannequin garments (exact-garment mode); `GEMINI_IMAGE_MODEL` picks the model |
+| `SEGMENTER=auto\|imgly\|heuristic\|mock` | Garment cut-out: the bundled CPU background-removal model (default when it loads), a sharp colour heuristic, or a fixed mask for tests |
 | `DATABASE_URL` | Managed Postgres instead of PGlite (migrations run at boot) |
 | `REDIS_URL` | BullMQ queue; run `pnpm worker` as a separate process |
 | `STORAGE_DRIVER=s3` + `S3_*` | Cloudflare R2 or S3 with presigned URLs |
@@ -43,6 +45,23 @@ pnpm tsx scripts/benchmark-providers.ts public/samples bm-regular-wheatish-20s
 ```
 
 Put the 50 benchmark photos in a folder and pass several base-model ids separated by commas (ids are in `src/lib/base-models/catalog.ts`). Works offline today with `TRYON_PROVIDERS=mock` and `VISION_PROVIDER=mock`; set `FASHN_API_KEY`, the `GOOGLE_*` credentials and `ANTHROPIC_API_KEY` in `.env.local` to benchmark the real providers and the Claude gate. Providers without keys are listed as skipped in the report. Useful flags: `--providers=fashn,google` (override the env order), `--vision=claude`, `--seed=42`, `--quality=balanced`, `--category=saree` (skip vision analysis for the category), `--limit=5`, `--timeout=120000`. The exit code is 1 if any provider call errored.
+
+## Exact-garment mode for real shop photos
+
+Boutiques photograph on a mannequin in the shop, with rails behind and warm bulbs overhead, and try-on models drift: colour shifts, embroidery gets simplified, a border moves. The pipeline now prepares every photo before any generation (`src/lib/jobs/exact-mode.ts`):
+
+1. **Garment cut-out** (`src/lib/providers/segment/`). The default segmenter runs IMG.LY's open-source background-removal model on CPU through onnxruntime-node; the weights ship with the package, so it needs no key or network and takes 3-5 s per photo. The foreground mask is then refined into a *garment* mask: for a clearly coloured garment, white or grey regions at the top and bottom of the foreground (mannequin neck, shoulders, the stand) are dropped, and only the largest blob is kept. Ivory and black garments skip the neutral trim because colour cannot separate them from a white mannequin. If the native runtime does not load, a sharp-based colour heuristic takes over (learns the garment palette from the centre, background from the border); it handles plain backgrounds but loses fine details such as gold embroidery on busy backgrounds. `SEGMENTER=mock` gives a fixed central mask for tests. Set `DEBUG_SEGMENT=1` to write masks, cut-outs and outputs to `.data/debug/`.
+2. **Colour normalisation** (`estimateColourCast` in `src/lib/images.ts`). Grey-world on the non-garment area (whole image as fallback), damped to 70% and clamped to ±18% per channel, so tungsten light is corrected without flattening a deliberately warm photo.
+3. **Routing by `photoType`** (new field on the garment analysis, filled by both vision providers). Mannequin photos take the exact route: a person generator (`src/lib/providers/person/`) draws the model and backdrop around the cut-out and the original garment pixels are pasted back through the feathered mask, so the garment is pixel-identical to the upload. Flat-lay, hanger and on-model photos go to the try-on providers as before, but with the cut-out on a plain light card instead of the cluttered shop photo. The studio tells owners with flat-lay or hanger photos to shoot on a mannequin for an exact match.
+4. **Mechanical exact-match check** (`checkExactMatch`). Before the vision gate, the output is compared with the cut-out: mean Lab colour difference on a grid plus structural similarity on the masked area when the garment position is known (exact route), colour-palette presence and drift of the main colour when it is not (try-on route). Failures are rejected with the reason "garment changed" and refunded like any other gate failure.
+
+The `MockPersonGenerator` composites the cut-out onto the placeholder model with a soft shadow; `GeminiPersonGenerator` calls Gemini's Interactions API (`gemini-nano-banana-2.1` by default) with the placed garment and its mask. Run the whole chain offline on the owner's real mannequin photo, writing every stage to `.data/debug/try-exact-mode/<timestamp>/`:
+
+```bash
+pnpm tsx --conditions=react-server scripts/try-exact-mode.ts
+```
+
+Pass another photo path, `--segmenter=heuristic`, `--model=<base model id>` or `--backdrop=<id>` to vary the run.
 
 ## Architecture in one paragraph
 

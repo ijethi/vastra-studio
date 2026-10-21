@@ -18,14 +18,20 @@ export class MockVisionProvider implements VisionProvider {
     const stats = await sharp(garmentImage).resize(64, 64, { fit: "inside" }).stats();
     const [r, g, b] = stats.channels.map((c) => Math.round(c.mean));
     const colour = describeColour(r, g, b);
-    const tooSmall = (meta.width ?? 0) < 400 || (meta.height ?? 0) < 400;
+    const width = meta.width ?? 0, height = meta.height ?? 0;
+    const tooSmall = width < 400 || height < 400;
     const tooDark = (r + g + b) / 3 < 35;
+    // One short sentence each: what is wrong, then what to do about it.
     const issues: string[] = [];
-    if (tooSmall) issues.push("Photo is very small; use at least 1000 px on the long side.");
-    if (tooDark) issues.push("Photo is very dark; shoot near a window or under even light.");
-    const portrait = (meta.height ?? 1) >= (meta.width ?? 1);
+    if (tooSmall) issues.push("Quite a small photo. A closer shot, or your phone's full size, keeps the detail.");
+    if (tooDark) issues.push("A bit dark. Move nearer a window if you can.");
+    const portrait = height >= width;
+    // Offline guess: a tall portrait is how mannequin photos arrive from a phone; a landscape frame is usually laid flat.
+    const ratio = height / Math.max(1, width);
+    const photoType = ratio >= 1.6 ? "mannequin" : portrait ? "hanger" : "flat-lay";
     return {
       category: portrait ? "one-piece" : "top",
+      photoType,
       title: `${colour} ${portrait ? "suit set" : "top"}`,
       colour,
       secondaryColours: [],

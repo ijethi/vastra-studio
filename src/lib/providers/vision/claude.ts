@@ -11,6 +11,7 @@ const MODEL = "claude-opus-5-5";
 
 const AnalysisSchema = z.object({
   category: z.enum(["top", "bottom", "one-piece", "set", "saree", "lehenga", "unknown"]),
+  photoType: z.enum(["mannequin", "flat-lay", "hanger", "on-model"]).describe("How the garment was photographed: on a mannequin or dress form, laid flat, on a hanger, or worn by a person"),
   title: z.string().describe("Short product title a boutique would use, e.g. 'Emerald chikankari kurta set'"),
   colour: z.string(),
   secondaryColours: z.array(z.string()),
@@ -20,7 +21,9 @@ const AnalysisSchema = z.object({
   fabricGuess: z.string().nullable(),
   print: z.string().nullable(),
   usable: z.boolean().describe("False if blurry, too dark, garment cropped, several garments, or not a garment"),
-  issues: z.array(z.string()).describe("Plain-English fixes for the photographer, empty when usable"),
+  issues: z
+    .array(z.string())
+    .describe("Tips for the photographer, each one short sentence with the problem and the fix, e.g. 'A bit dark. Move nearer a window if you can.' Empty when nothing needs fixing"),
   confidence: z.number().min(0).max(1),
 });
 
@@ -45,9 +48,14 @@ const ANALYSIS_SYSTEM = `You are the intake inspector for a virtual try-on studi
 You look at one photo of a garment (flat-lay, on a hanger, or on a mannequin) and describe it so the
 try-on model can be configured and the owner gets a sensible product title. Categories: top (kurta, blouse,
 shirt), bottom (palazzo, trousers, skirt), one-piece (dress, anarkali, gown, kurta with attached bottom),
-set (kurta + bottom + dupatta photographed together), saree, lehenga. Mark the photo unusable when it is
-blurry, very dark, the garment is cut off, several unrelated garments are shown, or it is not clothing.
-Write issues as short instructions to the photographer.`;
+set (kurta + bottom + dupatta photographed together), saree, lehenga. Also say how it was photographed
+(photoType): mannequin (dress form or mannequin, with or without a head), flat-lay (laid on a surface),
+hanger, or on-model (worn by a person). Mark the photo unusable when it is blurry, very dark, the garment
+is cut off, several unrelated garments are shown, or it is not clothing. Busy shop backgrounds and warm
+indoor light are handled by the app and are not issues.
+Issues are friendly tips for a shop owner using a phone: one short sentence each, a plain reason then a
+suggestion, for example "A bit dark. Move nearer a window if you can." or "The hem is cut off. Step back so
+the whole piece is in the frame." No jargon, no pixel sizes.`;
 
 const GATE_SYSTEM = `You are the quality gate for a virtual try-on studio. The first image is the garment photo
 the boutique uploaded; the second is an AI-generated image of a model wearing it. Judge whether the second
@@ -86,6 +94,7 @@ export class ClaudeVisionProvider implements VisionProvider {
     if (response.stop_reason === "refusal" || !response.parsed_output) {
       return {
         category: "unknown",
+        photoType: "flat-lay",
         title: "Untitled piece",
         colour: "",
         secondaryColours: [],

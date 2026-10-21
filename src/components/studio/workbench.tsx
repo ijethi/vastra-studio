@@ -497,6 +497,10 @@ function GenerationView({
           All sizes and every past photo live in your <Link href={`/gallery/${garment.id}`} className="underline">gallery</Link>.
         </p>
       ) : null}
+
+      {job.done && (garment.analysis?.photoType === "flat-lay" || garment.analysis?.photoType === "hanger") ? (
+        <p className="text-center text-sm text-ink-2">For an exact match, photograph the suit on a mannequin.</p>
+      ) : null}
     </section>
   );
 }

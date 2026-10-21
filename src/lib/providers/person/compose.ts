@@ -56,15 +56,16 @@ export async function softShadow(canvasMask: Buffer, opts: { dx?: number; dy?: n
   const { dx = 8, dy = 14, blur = 14, opacity = 0.32 } = opts;
   const meta = await sharp(canvasMask).metadata();
   const width = meta.width ?? PERSON_CANVAS.width, height = meta.height ?? PERSON_CANVAS.height;
-  const alpha = await sharp(canvasMask)
+  // Two passes: sharp applies extract before extend within one pipeline, so the shift needs its own step.
+  const shifted = await sharp(canvasMask)
     .toColourspace("b-w")
     .linear(opacity, 0)
     .blur(blur)
     .extend({ top: Math.max(0, dy), left: Math.max(0, dx), bottom: Math.max(0, -dy), right: Math.max(0, -dx), background: "#000" })
-    .extract({ left: 0, top: 0, width, height })
     .toColourspace("b-w")
-    .raw()
+    .png()
     .toBuffer();
+  const alpha = await sharp(shifted).extract({ left: 0, top: 0, width, height }).toColourspace("b-w").raw().toBuffer();
   const rgb = Buffer.alloc(width * height * 3);
   for (let i = 0; i < rgb.length; i += 3) {
     rgb[i] = 20;

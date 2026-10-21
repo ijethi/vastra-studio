@@ -23,6 +23,19 @@ describe("MockVisionProvider", () => {
     assert.equal(result.usable, true);
     assert.equal(result.colour, "Red");
     assert.equal(result.category, "one-piece");
+    assert.equal(result.photoType, "hanger");
+  });
+
+  it("guesses photoType from the frame and keeps tips to one friendly sentence", async () => {
+    const tall = await solid(500, 1100, { r: 180, g: 30, b: 40 });
+    assert.equal((await vision.analyzeGarment(tall)).photoType, "mannequin");
+    const wide = await solid(1000, 700, { r: 180, g: 30, b: 40 });
+    assert.equal((await vision.analyzeGarment(wide)).photoType, "flat-lay");
+    const dark = await solid(200, 200, { r: 5, g: 5, b: 5 });
+    for (const issue of (await vision.analyzeGarment(dark)).issues) {
+      assert.ok(/^[A-Z].*\. .*\.$/.test(issue), `reason then suggestion: ${issue}`);
+      assert.ok(issue.length < 90, `short: ${issue}`);
+    }
   });
 
   it("returns a deterministic verdict for the same output", async () => {

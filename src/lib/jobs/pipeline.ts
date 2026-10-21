@@ -6,7 +6,10 @@ import { getVision } from "@/lib/providers/vision";
 import { generateWithFailover, TryOnProviderError } from "@/lib/providers/tryon";
 import { getBaseModel } from "@/lib/base-models/catalog";
 import { renderBaseModelPng } from "@/lib/base-models/render";
-import { finishOutput, makeThumb } from "@/lib/images";
+import { finishOutput, makeThumb, type ExactMatchResult } from "@/lib/images";
+import { getSegmenter, writeDebug } from "@/lib/providers/segment";
+import { getPersonGenerator, PersonProviderError } from "@/lib/providers/person";
+import { checkPersonOutput, checkTryOnOutput, exactMatchVerdict, prepareGarment } from "@/lib/jobs/exact-mode";
 import { newId } from "@/lib/ids";
 import { getGarment, setGarmentAnalysis, setGarmentStatus } from "@/lib/dal/garments";
 import { getJobForWorker, insertImage, setJobProgress, updateJob } from "@/lib/dal/jobs";
@@ -98,6 +101,13 @@ async function runGenerate(jobId: string): Promise<void> {
     const analysis: GarmentAnalysis | null = garment.analysis ?? null;
     const category = analysis?.category ?? (garment.category as GarmentAnalysis["category"]) ?? "unknown";
     const watermark = settings?.watermarkEnabled || settings?.plan === "trial" ? "Vastra Studio · preview" : null;
+    const baseModel = getBaseModel(job.baseModelId)!;
+
+    // Cut the garment out of the shop photo and neutralise the lighting cast once per job.
+    // Mannequin photos then keep their garment pixels exactly; the rest go to try-on on a clean card.
+    await setJobProgress(jobId, "generating", 8, "Cutting out the garment");
+    const prepared = await prepareGarment(garmentImage, analysis, await getSegmenter(), { debugPrefix: `job-${jobId}` });
+    console.log(`[generate] ${jobId} route=${prepared.mode} segmenter=${prepared.segment?.segmenter ?? "none"} coverage=${prepared.segment?.coverage.toFixed(2) ?? "-"} cast=${prepared.cast.gains.map((g) => g.toFixed(2)).join("/")} (${prepared.cast.source})`);
 
     for (let i = 0; i < job.variations; i++) {
       let attempt = 0;
@@ -105,21 +115,52 @@ async function runGenerate(jobId: string): Promise<void> {
       let stored = false;
       while (attempt <= MAX_RETRIES_PER_IMAGE && !stored) {
         const pct = Math.round(10 + ((i + attempt * 0.4) / job.variations) * 70);
-        await setJobProgress(jobId, "generating", pct, `Dressing the model · image ${i + 1} of ${job.variations}${attempt ? " (retry)" : ""}`);
+        const suffix = `image ${i + 1} of ${job.variations}${attempt ? " (retry)" : ""}`;
 
-        const output = await generateWithFailover({
-          modelImage,
-          garmentImage,
-          category,
-          garmentPhotoType: "auto",
-          seed,
-          quality: "quality", // fidelity over speed: prints, zari and dupatta detail must survive
-          timeoutMs: PROVIDER_TIMEOUT_MS,
-        });
+        const tryOn = async () => {
+          await setJobProgress(jobId, "generating", pct, `Dressing the model · ${suffix}`);
+          const out = await generateWithFailover({
+            modelImage,
+            garmentImage: prepared.garmentForTryOn,
+            category,
+            garmentPhotoType: prepared.cutout ? "flat-lay" : "auto",
+            seed,
+            quality: "quality", // fidelity over speed: prints, zari and dupatta detail must survive
+            timeoutMs: PROVIDER_TIMEOUT_MS,
+          });
+          return { image: out.image, provider: out.provider, seed: out.seed, exact: await checkTryOnOutput(out.image, prepared) };
+        };
+
+        let output: { image: Buffer; provider: string; seed: number | null; exact: ExactMatchResult | null };
+        if (prepared.mode === "exact" && prepared.cutout && prepared.segment) {
+          await setJobProgress(jobId, "generating", pct, `Drawing the model around your garment · ${suffix}`);
+          try {
+            const person = await getPersonGenerator().generate({
+              garmentCutout: prepared.cutout,
+              garmentMask: prepared.segment.mask,
+              hints: { bodyType: baseModel.bodyType, skinTone: baseModel.skinTone, ageRange: baseModel.ageRange, backdrop: job.backdrop, seed },
+              category,
+              baseModelImage: modelImage,
+              timeoutMs: PROVIDER_TIMEOUT_MS,
+            });
+            output = { image: person.image, provider: person.provider, seed: person.seed, exact: await checkPersonOutput(person) };
+          } catch (err) {
+            if (err instanceof PersonProviderError && !err.retryable) throw err;
+            console.warn(`[generate] ${jobId} exact mode failed, falling back to try-on:`, (err as Error).message);
+            output = await tryOn();
+          }
+        } else {
+          output = await tryOn();
+        }
         await updateJob(jobId, { provider: output.provider });
+        await writeDebug({ [`job-${jobId}-05-output-${i + 1}-${attempt}.jpg`]: output.image });
 
         await setJobProgress(jobId, "gating", Math.min(95, pct + 10), `Checking quality · image ${i + 1}`);
-        const verdict = await vision.assessOutput({ garmentImage, outputImage: output.image, analysis });
+        // The mechanical garment check runs first: a drifted colour or redrawn motif never reaches the vision gate.
+        if (output.exact) {
+          console.log(`[generate] ${jobId} exact-match image ${i + 1}: ${output.exact.pass ? "pass" : "FAIL"} ΔE=${output.exact.meanDeltaE.toFixed(1)}${output.exact.ssim !== null ? ` ssim=${output.exact.ssim.toFixed(2)}` : ""}${output.exact.matchedFraction !== null ? ` matched=${output.exact.matchedFraction.toFixed(2)}` : ""}`);
+        }
+        const verdict = output.exact && !output.exact.pass ? exactMatchVerdict(output.exact) : await vision.assessOutput({ garmentImage, outputImage: output.image, analysis });
 
         if (!verdict.pass && attempt < MAX_RETRIES_PER_IMAGE) {
           attempt++;
@@ -188,7 +229,7 @@ async function runGenerate(jobId: string): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[generate] ${jobId} failed:`, message);
-    const nonRetryable = err instanceof TryOnProviderError && !err.retryable;
+    const nonRetryable = (err instanceof TryOnProviderError || err instanceof PersonProviderError) && !err.retryable;
     // Full refund minus images already delivered.
     const perImage = Math.floor(job.creditsCharged / job.variations);
     const refund = Math.max(0, job.creditsCharged - completed * perImage);
