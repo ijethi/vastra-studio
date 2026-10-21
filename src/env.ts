@@ -60,8 +60,31 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema>;
 
+/**
+ * Provider selection follows the keys. A key on its own switches the matching
+ * provider on; leaving a provider unset (or "auto") picks the best available.
+ * An explicit value ("mock", "fashn", ...) always wins, so tests stay hermetic.
+ */
+function resolveAuto(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = { ...raw };
+  const unset = (k: string) => !out[k] || out[k]!.trim() === "" || out[k]!.trim() === "auto";
+  const has = (k: string) => Boolean(out[k] && out[k]!.trim());
+  if (unset("VISION_PROVIDER")) out.VISION_PROVIDER = has("ANTHROPIC_API_KEY") ? "claude" : "mock";
+  if (unset("PERSON_PROVIDER")) out.PERSON_PROVIDER = has("GEMINI_API_KEY") ? "gemini" : "mock";
+  if (unset("STORYBOARD_PROVIDER")) out.STORYBOARD_PROVIDER = has("GEMINI_API_KEY") ? "gemini" : "mock";
+  if (unset("TRYON_PROVIDERS")) {
+    const list = [has("FASHN_API_KEY") ? "fashn" : "", has("GOOGLE_CLOUD_PROJECT") && has("GOOGLE_APPLICATION_CREDENTIALS_JSON") ? "google" : ""].filter(Boolean);
+    out.TRYON_PROVIDERS = list.length ? list.join(",") : "mock";
+  }
+  if (unset("VIDEO_PROVIDERS")) {
+    const list = [has("FAL_KEY") ? "kling" : "", has("GEMINI_API_KEY") ? "gemini" : ""].filter(Boolean);
+    out.VIDEO_PROVIDERS = list.length ? list.join(",") : "mock";
+  }
+  return out;
+}
+
 function load(): Env {
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse(resolveAuto(process.env));
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  ${i.path.join(".")}: ${i.message}`)
