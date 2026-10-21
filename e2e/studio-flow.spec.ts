@@ -23,7 +23,7 @@ const credits = () => page.getByRole("link", { name: /^Credits/ });
 
 /** Poll the dev-only route until the server has captured the sign-in code for this address. */
 async function readLatestCode(email: string): Promise<string> {
-  const deadline = Date.now() + 20_000;
+  const deadline = Date.now() + 60_000;
   let lastStatus = 0;
   while (Date.now() < deadline) {
     const res = await page.request.get(`/api/dev/last-otp?email=${encodeURIComponent(email)}`);
@@ -40,6 +40,12 @@ async function readLatestCode(email: string): Promise<string> {
 test.beforeAll(async ({ browser }) => {
   context = await browser.newContext();
   page = await context.newPage();
+  // Warm the dev server: the first compile of each route under `next dev` can take a while,
+  // and it should not eat into the budget of the timed steps below.
+  test.setTimeout(600_000);
+  const otp = await page.request.get("/api/dev/last-otp?email=warmup%40example.com", { timeout: 300_000 });
+  expect(otp.status(), "GET /api/dev/last-otp must answer (404 for an unknown address) when E2E_TEST=1").toBe(404);
+  await page.goto("/sign-in", { timeout: 300_000 });
 });
 
 test.afterAll(async () => {
