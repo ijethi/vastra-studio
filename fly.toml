@@ -1,0 +1,38 @@
+# Fly.io config for the Vastra Studio worker (BullMQ consumer), Mumbai.
+# The web tier is on Vercel (vercel.json); this app has no public ports.
+#
+#   fly launch --no-deploy --copy-config      # first time, creates the app
+#   fly secrets set DATABASE_URL=... REDIS_URL=... AUTH_SECRET=... \
+#       STORAGE_DRIVER=s3 S3_ENDPOINT=... S3_BUCKET=... S3_ACCESS_KEY_ID=... \
+#       S3_SECRET_ACCESS_KEY=... TRYON_PROVIDERS=fashn,google FASHN_API_KEY=... \
+#       VISION_PROVIDER=claude ANTHROPIC_API_KEY=...
+#   fly deploy
+#
+# Put Redis in the same region (Upstash via `fly redis create` in bom, or a
+# Railway Redis in Mumbai) so queue round-trips stay local.
+
+app = "vastra-worker"
+primary_region = "bom"
+kill_signal = "SIGTERM"
+kill_timeout = "60s"   # let in-flight generations finish; the worker drains on SIGTERM
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  WORKER_CONCURRENCY = "4"
+
+[processes]
+  worker = "node --import tsx --conditions=react-server scripts/worker.ts"
+
+[deploy]
+  strategy = "rolling"
+
+# No [http_service]: a queue consumer exposes nothing, and without a service
+# Fly keeps the machine running instead of auto-stopping it on idle.
+
+[[vm]]
+  processes = ["worker"]
+  size = "shared-cpu-2x"
+  memory = "2048mb"   # sharp re-encodes and composites full-size images

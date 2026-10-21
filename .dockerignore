@@ -1,0 +1,18 @@
+# Keep the worker image build context small (see Dockerfile).
+node_modules
+.next
+out
+build
+.data
+.vercel
+.git
+.github
+.claude
+coverage
+*.log
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+public
+README.md
