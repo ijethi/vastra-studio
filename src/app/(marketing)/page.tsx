@@ -8,7 +8,7 @@ import { CompareSlider } from "@/components/marketing/compare-slider";
 export const metadata = { title: { absolute: "Vastra Studio · Your suit, on a model, in a minute" } };
 
 const BEFORE = "/samples/real-mannequin-coral-kurta.webp";
-const AFTER = "/samples/reference-fashn-output-coral-kurta.webp";
+const AFTER = "/samples/reference-on-model-coral-kurta.webp";
 
 const garments = ["Kurta sets", "Anarkalis", "Kaftans", "Co-ord sets", "Lehengas", "Sharara sets", "Western wear", "Sarees · after pilot"];
 

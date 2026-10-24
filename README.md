@@ -23,7 +23,7 @@ In development everything runs in one process: an embedded Postgres (PGlite) in 
 
 | Env var | Effect |
 | --- | --- |
-| `TRYON_PROVIDERS=fashn,google` + `FASHN_API_KEY` | FASHN v1.6 as primary try-on, Google Virtual Try-On as fallback |
+| `GEMINI_API_KEY` | Gemini image model: exact-garment route, try-on for hanger and flat-lay photos, model library, reel scenes and video |
 | `GOOGLE_CLOUD_PROJECT` + `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Enables the Google adapter |
 | `VISION_PROVIDER=claude` + `ANTHROPIC_API_KEY` | Claude vision for garment analysis and the output quality gate |
 | `PERSON_PROVIDER=gemini` + `GEMINI_API_KEY` | Gemini image generation draws the model around mannequin garments (exact-garment mode); `GEMINI_IMAGE_MODEL` picks the model |
@@ -40,13 +40,13 @@ In development everything runs in one process: an embedded Postgres (PGlite) in 
 
 ## Benchmarking the try-on providers
 
-Before pricing is fixed, FASHN and Google need to be measured on real Indian garments (sarees, lehengas, kurta sets). `scripts/benchmark-providers.ts` runs every provider listed in `TRYON_PROVIDERS` on each garment photo × base model pair with a fixed seed, times each call, records the provider's reported cost, runs the vision quality gate on every output, and writes the images plus `results.json` and `results.md` (provider × garment: pass/fail, score, latency, cost) to `./.data/benchmark/<timestamp>/`. It imports the library code directly, reads keys from `.env.local`, never calls the app server and writes nothing to the database.
+Before pricing is fixed, Gemini and Google need to be measured on real Indian garments (sarees, lehengas, kurta sets). `scripts/benchmark-providers.ts` runs every provider listed in `TRYON_PROVIDERS` on each garment photo × base model pair with a fixed seed, times each call, records the provider's reported cost, runs the vision quality gate on every output, and writes the images plus `results.json` and `results.md` (provider × garment: pass/fail, score, latency, cost) to `./.data/benchmark/<timestamp>/`. It imports the library code directly, reads keys from `.env.local`, never calls the app server and writes nothing to the database.
 
 ```bash
 pnpm tsx scripts/benchmark-providers.ts public/samples bm-regular-wheatish-20s
 ```
 
-Put the 50 benchmark photos in a folder and pass several base-model ids separated by commas (ids are in `src/lib/base-models/catalog.ts`). Works offline today with `TRYON_PROVIDERS=mock` and `VISION_PROVIDER=mock`; set `FASHN_API_KEY`, the `GOOGLE_*` credentials and `ANTHROPIC_API_KEY` in `.env.local` to benchmark the real providers and the Claude gate. Providers without keys are listed as skipped in the report. Useful flags: `--providers=fashn,google` (override the env order), `--vision=claude`, `--seed=42`, `--quality=balanced`, `--category=saree` (skip vision analysis for the category), `--limit=5`, `--timeout=120000`. The exit code is 1 if any provider call errored.
+Put the 50 benchmark photos in a folder and pass several base-model ids separated by commas (ids are in `src/lib/base-models/catalog.ts`). Works offline today with `TRYON_PROVIDERS=mock` and `VISION_PROVIDER=mock`; set `GEMINI_API_KEY`, the `GOOGLE_*` credentials and `ANTHROPIC_API_KEY` in `.env.local` to benchmark the real providers and the Claude gate. Providers without keys are listed as skipped in the report. Useful flags: `--providers=gemini,google` (override the env order), `--vision=claude`, `--seed=42`, `--quality=balanced`, `--category=saree` (skip vision analysis for the category), `--limit=5`, `--timeout=120000`. The exit code is 1 if any provider call errored.
 
 ## Exact-garment mode for real shop photos
 
@@ -87,7 +87,7 @@ src/
     dal/          tenant-scoped data access (garments, jobs, credits, audit)
     db/           Drizzle schema + client (PGlite or Postgres)
     jobs/         the generation pipeline and worker bootstrap
-    providers/    tryon/ (mock, fashn, google) and vision/ (mock, claude)
+    providers/    tryon/ (mock, gemini, google) and vision/ (mock, claude)
     queue/        in-process and BullMQ adapters
     storage/      local and S3 adapters with signed URLs
     base-models/  curated library catalogue + dev renderer
@@ -171,7 +171,7 @@ fly launch --no-deploy --copy-config
 ```
 
 ```bash
-fly secrets set DATABASE_URL=... REDIS_URL=... AUTH_SECRET=... STORAGE_DRIVER=s3 S3_ENDPOINT=... S3_BUCKET=... S3_ACCESS_KEY_ID=... S3_SECRET_ACCESS_KEY=... TRYON_PROVIDERS=fashn,google FASHN_API_KEY=... VISION_PROVIDER=claude ANTHROPIC_API_KEY=...
+fly secrets set DATABASE_URL=... REDIS_URL=... AUTH_SECRET=... STORAGE_DRIVER=s3 S3_ENDPOINT=... S3_BUCKET=... S3_ACCESS_KEY_ID=... S3_SECRET_ACCESS_KEY=... TRYON_PROVIDERS=gemini,google GEMINI_API_KEY=... VISION_PROVIDER=claude ANTHROPIC_API_KEY=...
 ```
 
 ```bash

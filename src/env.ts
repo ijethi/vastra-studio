@@ -24,7 +24,6 @@ const schema = z.object({
   S3_PUBLIC_BASE_URL: optional,
 
   TRYON_PROVIDERS: z.string().default("mock"),
-  FASHN_API_KEY: optional,
   GOOGLE_CLOUD_PROJECT: optional,
   GOOGLE_CLOUD_LOCATION: z.string().default("us-central1"),
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optional,
@@ -63,7 +62,7 @@ export type Env = z.infer<typeof schema>;
 /**
  * Provider selection follows the keys. A key on its own switches the matching
  * provider on; leaving a provider unset (or "auto") picks the best available.
- * An explicit value ("mock", "fashn", ...) always wins, so tests stay hermetic.
+ * An explicit value ("mock", "gemini", ...) always wins, so tests stay hermetic.
  */
 function resolveAuto(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = { ...raw };
@@ -73,7 +72,7 @@ function resolveAuto(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   if (unset("PERSON_PROVIDER")) out.PERSON_PROVIDER = has("GEMINI_API_KEY") ? "gemini" : "mock";
   if (unset("STORYBOARD_PROVIDER")) out.STORYBOARD_PROVIDER = has("GEMINI_API_KEY") ? "gemini" : "mock";
   if (unset("TRYON_PROVIDERS")) {
-    const list = [has("FASHN_API_KEY") ? "fashn" : "", has("GOOGLE_CLOUD_PROJECT") && has("GOOGLE_APPLICATION_CREDENTIALS_JSON") ? "google" : ""].filter(Boolean);
+    const list = [has("GEMINI_API_KEY") ? "gemini" : "", has("GOOGLE_CLOUD_PROJECT") && has("GOOGLE_APPLICATION_CREDENTIALS_JSON") ? "google" : ""].filter(Boolean);
     out.TRYON_PROVIDERS = list.length ? list.join(",") : "mock";
   }
   if (unset("VIDEO_PROVIDERS")) {
@@ -109,12 +108,12 @@ export const platformAdminEmails = new Set(
     .filter(Boolean),
 );
 
-export type TryOnProviderName = "mock" | "fashn" | "google";
+export type TryOnProviderName = "mock" | "gemini" | "google";
 
 /** Try-on providers in priority order (primary first). */
 export const tryOnProviderOrder = env.TRYON_PROVIDERS.split(",")
   .map((p) => p.trim())
-  .filter((p): p is TryOnProviderName => p === "mock" || p === "fashn" || p === "google");
+  .filter((p): p is TryOnProviderName => p === "mock" || p === "gemini" || p === "google");
 
 export type VideoProviderName = "mock" | "kling" | "gemini";
 

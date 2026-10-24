@@ -1,14 +1,14 @@
 import "server-only";
 import { tryOnProviderOrder, type TryOnProviderName } from "@/env";
 import { MockTryOnProvider } from "./mock";
-import { FashnTryOnProvider } from "./fashn";
+import { GeminiTryOnProvider } from "./gemini";
 import { GoogleTryOnProvider } from "./google";
 import { TryOnProviderError, type TryOnInput, type TryOnOutput, type TryOnProvider } from "./types";
 import { getPlatformSetting } from "@/lib/dal/platform";
 
 const registry: Record<TryOnProviderName, () => TryOnProvider> = {
   mock: () => new MockTryOnProvider(),
-  fashn: () => new FashnTryOnProvider(),
+  gemini: () => new GeminiTryOnProvider(),
   google: () => new GoogleTryOnProvider(),
 };
 

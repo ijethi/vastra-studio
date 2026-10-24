@@ -9,7 +9,7 @@
  *   pnpm tsx scripts/benchmark-providers.ts <garment-folder> <base-model-id>[,<id>...] [options]
  *
  * Options:
- *   --providers=mock,fashn,google   override TRYON_PROVIDERS from .env.local
+ *   --providers=mock,gemini,google   override TRYON_PROVIDERS from .env.local
  *   --vision=mock|claude            override VISION_PROVIDER from .env.local
  *   --seed=42                       fixed seed passed to every provider call
  *   --quality=quality|balanced      provider quality mode (default: quality, as in the pipeline)
@@ -23,7 +23,7 @@
  *
  * The library code is imported directly; the app server is never called and
  * nothing is written to the database. Works offline with TRYON_PROVIDERS=mock
- * and VISION_PROVIDER=mock; FASHN, Google and Claude are used when their keys
+ * and VISION_PROVIDER=mock; GEMINI, Google and Claude are used when their keys
  * are present in .env.local.
  */
 import { promises as fs } from "node:fs";
@@ -86,7 +86,7 @@ function usage(): never {
     [
       "Usage: pnpm tsx scripts/benchmark-providers.ts <garment-folder> <base-model-id>[,<id>...] [options]",
       "",
-      "Options: --providers=mock,fashn,google  --vision=mock|claude  --seed=42  --quality=quality|balanced",
+      "Options: --providers=mock,gemini,google  --vision=mock|claude  --seed=42  --quality=quality|balanced",
       "         --category=auto|top|bottom|one-piece|set|saree|lehenga  --photo-type=auto|flat-lay|on-model",
       "         --backdrop=studio-ivory  --timeout=90000  --limit=N  --out=.data/benchmark",
     ].join("\n"),
@@ -327,7 +327,7 @@ async function main() {
   // Everything that reads `env` is imported only now.
   const { env, tryOnProviderOrder } = await import("../src/env");
   const { MockTryOnProvider } = await import("../src/lib/providers/tryon/mock");
-  const { FashnTryOnProvider } = await import("../src/lib/providers/tryon/fashn");
+  const { GeminiTryOnProvider } = await import("../src/lib/providers/tryon/gemini");
   const { GoogleTryOnProvider } = await import("../src/lib/providers/tryon/google");
   const { TryOnProviderError } = await import("../src/lib/providers/tryon/types");
   const { getBaseModel, getBackdrop } = await import("../src/lib/base-models/catalog");
@@ -368,7 +368,7 @@ async function main() {
   // ---- try-on providers: every configured one, in TRYON_PROVIDERS order
   const registry: Record<string, () => TryOnProvider> = {
     mock: () => new MockTryOnProvider(),
-    fashn: () => new FashnTryOnProvider(),
+    gemini: () => new GeminiTryOnProvider(),
     google: () => new GoogleTryOnProvider(),
   };
   const requested = opts.providers ?? tryOnProviderOrder;
@@ -377,13 +377,13 @@ async function main() {
   for (const name of requested) {
     const make = registry[name];
     if (!make) {
-      skipped.push({ provider: name, reason: "unknown provider name (expected mock, fashn or google)" });
+      skipped.push({ provider: name, reason: "unknown provider name (expected mock, gemini or google)" });
       continue;
     }
     const p = make();
     if (await p.isAvailable()) providers.push(p);
     else {
-      const need = name === "fashn" ? "FASHN_API_KEY" : name === "google" ? "GOOGLE_CLOUD_PROJECT and GOOGLE_APPLICATION_CREDENTIALS_JSON" : "configuration";
+      const need = name === "gemini" ? "GEMINI_API_KEY" : name === "google" ? "GOOGLE_CLOUD_PROJECT and GOOGLE_APPLICATION_CREDENTIALS_JSON" : "configuration";
       skipped.push({ provider: name, reason: `not configured (${need} missing in .env.local)` });
     }
   }

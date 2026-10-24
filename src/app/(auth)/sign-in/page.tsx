@@ -41,7 +41,7 @@ export default function SignInPage() {
       </div>
       <div className="night relative hidden items-center justify-center p-12 lg:flex">
         <div className="w-full max-w-sm">
-          <CompareSlider before="/samples/real-mannequin-coral-kurta.webp" after="/samples/reference-fashn-output-coral-kurta.webp" className="shadow-[var(--shadow-lg)]" />
+          <CompareSlider before="/samples/real-mannequin-coral-kurta.webp" after="/samples/reference-on-model-coral-kurta.webp" className="shadow-[var(--shadow-lg)]" />
           <p className="mt-6 font-display text-2xl font-bold leading-tight text-night-ink">The same suit, on a model, before the customer asks.</p>
           <p className="mt-2 text-sm text-night-ink-2">A real shop photo from a pilot boutique.</p>
         </div>
