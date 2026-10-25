@@ -50,3 +50,8 @@ drizzle/meta/_journal.json.bak
 # playwright output
 /test-results/
 /playwright-report/
+
+# local agent tooling
+.claude/
+AGENTS.md
+CLAUDE.md
