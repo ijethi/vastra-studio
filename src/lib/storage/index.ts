@@ -40,6 +40,10 @@ export const keys = {
   reelOutput: (tenantId: string, reelId: string) => `tenants/${tenantId}/reels/${reelId}/reel.mp4`,
   reelCover: (tenantId: string, reelId: string) => `tenants/${tenantId}/reels/${reelId}/cover.jpg`,
   reelPrefix: (tenantId: string, reelId: string) => `tenants/${tenantId}/reels/${reelId}/`,
+  /** Reviewed photoreal render of a base model on one backdrop; the pipeline composites on it when present. */
+  libraryRender: (baseModelId: string, backdropId: string) => `library/${baseModelId}/${backdropId}.jpg`,
+  /** The base model's preview card in the studio and settings (uploaded from the admin console). */
+  libraryPreview: (baseModelId: string) => `library/${baseModelId}/preview.jpg`,
 };
 
 export const READ_URL_TTL_SECONDS = 60 * 60; // 1 hour

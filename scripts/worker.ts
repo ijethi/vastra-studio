@@ -2,6 +2,7 @@
  * Standalone worker process for Redis-backed deployments.
  *   REDIS_URL=redis://... pnpm worker
  */
+import "./load-env";
 import { startWorker } from "../src/lib/jobs/pipeline";
 
 const concurrency = Number(process.env.WORKER_CONCURRENCY ?? "4");

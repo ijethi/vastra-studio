@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { requireTenant } from "@/lib/auth/session";
 import { getTenantSettings, listLedger } from "@/lib/dal/tenants";
 import { razorpayConfigured } from "@/app/actions/billing";
-import { CREDIT_PACKS } from "@/lib/billing/packs";
+import { getAppContent, getCreditPacks } from "@/lib/dal/content";
 import { BillingPanel } from "./billing-panel";
 import { Card, Skeleton } from "@/components/ui/primitives";
 import { isProd } from "@/env";
@@ -11,7 +11,13 @@ export const metadata = { title: "Billing" };
 
 async function Billing() {
   const ctx = await requireTenant();
-  const [settings, ledger, razorpay] = await Promise.all([getTenantSettings(ctx.tenant.id), listLedger(ctx.tenant.id, 40), razorpayConfigured()]);
+  const [settings, ledger, razorpay, packs, copy] = await Promise.all([
+    getTenantSettings(ctx.tenant.id),
+    listLedger(ctx.tenant.id, 40),
+    razorpayConfigured(),
+    getCreditPacks(),
+    getAppContent("billing.copy"),
+  ]);
   const canBuy = ctx.role === "owner" || ctx.role === "admin";
 
   return (
@@ -19,7 +25,8 @@ async function Billing() {
       <BillingPanel
         balance={settings?.creditsBalance ?? 0}
         plan={settings?.plan ?? "trial"}
-        packs={CREDIT_PACKS.map((p) => ({ ...p }))}
+        packs={packs.map((p) => ({ id: p.id, credits: p.credits, amountMinor: p.amountMinor, label: p.label, blurb: p.blurb }))}
+        copy={copy}
         razorpay={razorpay}
         devTopUp={!isProd}
         canBuy={canBuy}

@@ -1,4 +1,5 @@
 /** Applies pending migrations (same code path the app uses at boot). */
+import "./load-env";
 import { getDb } from "../src/lib/db";
 
 getDb()

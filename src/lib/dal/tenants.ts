@@ -3,7 +3,7 @@ import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { env } from "@/env";
 import { newId } from "@/lib/ids";
-import { DEFAULT_BACKDROP_ID, DEFAULT_BASE_MODEL_ID } from "@/lib/base-models/catalog";
+import { loadStudioDefaults } from "@/lib/dal/content";
 
 export class InsufficientCreditsError extends Error {
   constructor(public needed: number, public balance: number) {
@@ -22,12 +22,15 @@ export async function ensureTenantSettings(tenantId: string, actorId: string | n
   const db = await getDb();
   const existing = await db.query.tenantSettings.findFirst({ where: eq(schema.tenantSettings.tenantId, tenantId) });
   if (existing) return existing;
+  // House defaults are content (admin-editable), read outside the request cache because this also runs from the worker.
+  const defaults = await loadStudioDefaults();
   const [row] = await db
     .insert(schema.tenantSettings)
     .values({
       tenantId,
-      defaultBaseModelId: DEFAULT_BASE_MODEL_ID,
-      defaultBackdrop: DEFAULT_BACKDROP_ID,
+      defaultBaseModelId: defaults.baseModelId,
+      defaultBackdrop: defaults.backdropId,
+      defaultVariations: defaults.variations,
       creditsBalance: env.TRIAL_CREDITS,
       watermarkEnabled: true,
     })

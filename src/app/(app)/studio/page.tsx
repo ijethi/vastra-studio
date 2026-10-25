@@ -3,7 +3,7 @@ import { requireTenant } from "@/lib/auth/session";
 import { getTenantSettings } from "@/lib/dal/tenants";
 import { getGarment } from "@/lib/dal/garments";
 import { getStorage, READ_URL_TTL_SECONDS } from "@/lib/storage";
-import { BACKDROPS, BASE_MODELS, DEFAULT_BACKDROP_ID, DEFAULT_BASE_MODEL_ID } from "@/lib/base-models/catalog";
+import { getActiveBaseModels, getBackdrops, getStudioDefaults } from "@/lib/dal/content";
 import { StudioWorkbench } from "@/components/studio/workbench";
 import { Skeleton } from "@/components/ui/primitives";
 
@@ -12,7 +12,8 @@ export const metadata = { title: "Studio" };
 async function Studio({ searchParams }: { searchParams: Promise<{ garment?: string }> }) {
   const { garment: garmentId } = await searchParams;
   const ctx = await requireTenant();
-  const settings = await getTenantSettings(ctx.tenant.id);
+  // Catalogue and house defaults come from the content tables (request-cached, admin-editable).
+  const [settings, baseModels, backdrops, houseDefaults] = await Promise.all([getTenantSettings(ctx.tenant.id), getActiveBaseModels(), getBackdrops(), getStudioDefaults()]);
   const storage = getStorage();
 
   const initialGarment = garmentId ? await getGarment(ctx.tenant.id, garmentId) : null;
@@ -29,12 +30,13 @@ async function Studio({ searchParams }: { searchParams: Promise<{ garment?: stri
 
   return (
     <StudioWorkbench
-      baseModels={BASE_MODELS.filter((m) => m.active)}
-      backdrops={BACKDROPS}
+      baseModels={baseModels}
+      backdrops={backdrops}
       defaults={{
-        baseModelId: settings?.defaultBaseModelId ?? DEFAULT_BASE_MODEL_ID,
-        backdrop: settings?.defaultBackdrop ?? DEFAULT_BACKDROP_ID,
-        variations: settings?.defaultVariations ?? 2,
+        // A boutique default that the admin has since retired falls back to the house default.
+        baseModelId: baseModels.some((m) => m.id === settings?.defaultBaseModelId) ? settings!.defaultBaseModelId! : houseDefaults.baseModelId,
+        backdrop: backdrops.some((b) => b.id === settings?.defaultBackdrop) ? settings!.defaultBackdrop : houseDefaults.backdropId,
+        variations: settings?.defaultVariations ?? houseDefaults.variations,
         autoGenerate: settings?.autoGenerate ?? true,
       }}
       credits={settings?.creditsBalance ?? 0}

@@ -6,13 +6,13 @@ import { getImage } from "@/lib/dal/jobs";
 import { getReel } from "@/lib/dal/reels";
 import { createShareLink, revokeShareLink, type ShareTarget } from "@/lib/dal/share";
 import { audit } from "@/lib/dal/audit";
-import { clientIp, rateLimit } from "@/lib/security/request";
+import { clientIp, enforceLimit, limitMessage } from "@/lib/security/request";
 import type { ActionResult } from "./garments";
 
 export async function createShareLinkAction(targetType: ShareTarget, targetId: string): Promise<ActionResult<{ id: string; url: string; expiresAt: string }>> {
   const ctx = await requireTenant();
-  const rl = rateLimit(`share:${ctx.tenant.id}`, 200, 60 * 60 * 1000);
-  if (!rl.ok) return { ok: false, error: "Too many links created. Try again in a little while." };
+  const limit = await enforceLimit("share", { tenantId: ctx.tenant.id, userId: ctx.user.id });
+  if (!limit.ok) return { ok: false, error: limitMessage("share", limit) };
 
   const exists =
     targetType === "image"

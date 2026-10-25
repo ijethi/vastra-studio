@@ -7,9 +7,10 @@ import {
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
+  HeadBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { SignedUpload, StorageAdapter } from "./types";
+import { ASSET_CACHE_CONTROL, signManyWith, type SignedUpload, type StorageAdapter } from "./types";
 import { env } from "@/env";
 import { assertSafeKey } from "./local";
 
@@ -36,8 +37,9 @@ export class S3Storage implements StorageAdapter {
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
     assertSafeKey(key);
+    // Keys never change content (one key per image id), so the object itself carries a long cache life.
     await this.client.send(
-      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }),
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType, CacheControl: ASSET_CACHE_CONTROL }),
     );
   }
   async get(key: string): Promise<Buffer> {
@@ -91,8 +93,16 @@ export class S3Storage implements StorageAdapter {
   async signRead(key: string, ttlSeconds: number): Promise<string> {
     assertSafeKey(key);
     if (env.S3_PUBLIC_BASE_URL) return `${env.S3_PUBLIC_BASE_URL.replace(/\/$/, "")}/${key}`;
-    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
-      expiresIn: ttlSeconds,
-    });
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key, ResponseCacheControl: ASSET_CACHE_CONTROL }),
+      { expiresIn: ttlSeconds },
+    );
+  }
+  async signReadMany(keys: string[], ttlSeconds: number): Promise<Map<string, string>> {
+    return signManyWith((k) => this.signRead(k, ttlSeconds), keys);
+  }
+  async ping(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
   }
 }

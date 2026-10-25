@@ -55,4 +55,9 @@ export class BullQueue implements JobQueue {
     await this.queue.close();
     this.connection.disconnect();
   }
+
+  async ping(): Promise<void> {
+    const reply = await this.connection.ping();
+    if (reply !== "PONG") throw new Error(`Redis ping answered ${String(reply)}`);
+  }
 }

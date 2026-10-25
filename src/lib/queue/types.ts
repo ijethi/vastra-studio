@@ -14,4 +14,6 @@ export interface JobQueue {
   /** Start consuming. Safe to call once per process. */
   start(handler: JobHandler, concurrency: number): Promise<void>;
   stop(): Promise<void>;
+  /** Liveness probe for /api/health: resolves when the broker answers. */
+  ping(): Promise<void>;
 }

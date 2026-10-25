@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { requireTenant } from "@/lib/auth/session";
 import { getTenantSettings } from "@/lib/dal/tenants";
 import { getDb, schema } from "@/lib/db";
-import { BACKDROPS, BASE_MODELS, DEFAULT_BACKDROP_ID, DEFAULT_BASE_MODEL_ID } from "@/lib/base-models/catalog";
+import { getActiveBaseModels, getBackdrops, getStudioDefaults } from "@/lib/dal/content";
 import { ContactForm, DangerZone, DefaultsForm, TeamPanel } from "./settings-forms";
 import { getBoutiqueContact } from "@/lib/dal/share";
 import { Skeleton } from "@/components/ui/primitives";
@@ -13,7 +13,7 @@ export const metadata = { title: "Settings" };
 async function Settings() {
   const ctx = await requireTenant();
   const db = await getDb();
-  const [settings, members, invitations, contact] = await Promise.all([
+  const [settings, members, invitations, contact, baseModels, backdrops, houseDefaults] = await Promise.all([
     getTenantSettings(ctx.tenant.id),
     db
       .select({ id: schema.member.id, role: schema.member.role, name: schema.user.name, email: schema.user.email, userId: schema.user.id })
@@ -22,6 +22,9 @@ async function Settings() {
       .where(eq(schema.member.organizationId, ctx.tenant.id)),
     db.query.invitation.findMany({ where: eq(schema.invitation.organizationId, ctx.tenant.id) }),
     getBoutiqueContact(ctx.tenant.id),
+    getActiveBaseModels(),
+    getBackdrops(),
+    getStudioDefaults(),
   ]);
   const canEdit = ctx.role === "owner" || ctx.role === "admin";
 
@@ -29,12 +32,12 @@ async function Settings() {
     <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
       <DefaultsForm
         canEdit={canEdit}
-        baseModels={BASE_MODELS.filter((m) => m.active).map((m) => ({ id: m.id, label: m.label, imagePath: m.imagePath }))}
-        backdrops={BACKDROPS.map((b) => ({ id: b.id, label: b.label, hex: b.hex }))}
+        baseModels={baseModels.map((m) => ({ id: m.id, label: m.label, imagePath: m.imagePath }))}
+        backdrops={backdrops.map((b) => ({ id: b.id, label: b.label, hex: b.hex }))}
         values={{
-          defaultBaseModelId: settings?.defaultBaseModelId ?? DEFAULT_BASE_MODEL_ID,
-          defaultBackdrop: settings?.defaultBackdrop ?? DEFAULT_BACKDROP_ID,
-          defaultVariations: settings?.defaultVariations ?? 2,
+          defaultBaseModelId: baseModels.some((m) => m.id === settings?.defaultBaseModelId) ? settings!.defaultBaseModelId! : houseDefaults.baseModelId,
+          defaultBackdrop: backdrops.some((b) => b.id === settings?.defaultBackdrop) ? settings!.defaultBackdrop : houseDefaults.backdropId,
+          defaultVariations: settings?.defaultVariations ?? houseDefaults.variations,
           watermarkEnabled: settings?.watermarkEnabled ?? true,
           autoGenerate: settings?.autoGenerate ?? true,
         }}

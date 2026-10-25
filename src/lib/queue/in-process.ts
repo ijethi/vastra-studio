@@ -29,6 +29,10 @@ export class InProcessQueue implements JobQueue {
     this.stopped = true;
   }
 
+  async ping(): Promise<void> {
+    // Nothing to reach: the queue is this process.
+  }
+
   private pump() {
     if (!this.handler || this.stopped) return;
     while (this.active < this.concurrency && this.pending.length > 0) {

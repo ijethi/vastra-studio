@@ -2,7 +2,7 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { SignedUpload, StorageAdapter } from "./types";
+import { signManyWith, type SignedUpload, type StorageAdapter } from "./types";
 import { env } from "@/env";
 
 const ROOT = path.resolve(process.env.LOCAL_STORAGE_DIR ?? "./.data/storage");
@@ -95,5 +95,12 @@ export class LocalStorage implements StorageAdapter {
     const e = Date.now() + ttlSeconds * 1000;
     const token = sign({ k: key, e, m: "r" });
     return `/api/storage/read?token=${encodeURIComponent(token)}`;
+  }
+  async signReadMany(keys: string[], ttlSeconds: number): Promise<Map<string, string>> {
+    return signManyWith((k) => this.signRead(k, ttlSeconds), keys);
+  }
+  async ping(): Promise<void> {
+    await fs.mkdir(ROOT, { recursive: true });
+    await fs.access(ROOT);
   }
 }

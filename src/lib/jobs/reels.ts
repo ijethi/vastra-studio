@@ -9,6 +9,7 @@ import { orderForArc } from "@/lib/reels/arc";
 import { makeThumb } from "@/lib/images";
 import { newId } from "@/lib/ids";
 import { getReelForWorker, insertReelAsset, setReelProgress, updateReel } from "@/lib/dal/reels";
+import { loadReelScenes } from "@/lib/dal/content";
 import { listGarmentPhotos } from "@/lib/dal/garment-photos";
 import { creditTenant } from "@/lib/dal/tenants";
 import { creditsForClip, REEL_STILL_COUNT, refundPerFailedStill } from "@/lib/dal/pricing";
@@ -50,6 +51,7 @@ export async function runReelStills(reelId: string): Promise<void> {
       garmentAnalysis: analysis,
       garmentTitle: reel.garment.title,
       vibe: reel.vibe,
+      scenes: await loadReelScenes(reel.vibe),
       count: REEL_STILL_COUNT,
       timeoutMs: STILL_TIMEOUT_MS,
       onStill: (done, total) => setReelProgress(reelId, "stills", Math.round(5 + (done / total) * 45), `Sketching scene ${done} of ${total}`),

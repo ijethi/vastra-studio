@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import { getStorage, keys } from "@/lib/storage";
 import { getVision } from "@/lib/providers/vision";
 import { generateWithFailover, TryOnProviderError } from "@/lib/providers/tryon";
-import { getBaseModel } from "@/lib/base-models/catalog";
+import { loadBackdrop, loadBaseModel } from "@/lib/dal/content";
 import { renderBaseModelPng } from "@/lib/base-models/render";
 import { finishOutput, makeThumb, type ExactMatchResult } from "@/lib/images";
 import { getSegmenter, writeDebug } from "@/lib/providers/segment";
@@ -49,10 +49,10 @@ async function runAnalyze(tenantId: string, garmentId: string): Promise<void> {
 /* --------------------------- generation --------------------------- */
 
 async function loadBaseModelImage(baseModelId: string, backdropId: string): Promise<Buffer> {
-  const model = getBaseModel(baseModelId);
+  const model = await loadBaseModel(baseModelId);
   if (!model) throw new Error(`Unknown base model ${baseModelId}`);
-  // Production: a reviewed photoreal render per model x backdrop lives in storage.
-  const key = `library/${model.id}/${backdropId}.jpg`;
+  // Production: a reviewed photoreal render per model x backdrop lives in storage (library script or admin upload).
+  const key = keys.libraryRender(model.id, backdropId);
   const storage = getStorage();
   if (await storage.exists(key)) return storage.get(key);
   // Development: render the placeholder on demand and cache it.
@@ -61,7 +61,7 @@ async function loadBaseModelImage(baseModelId: string, backdropId: string): Prom
   try {
     return await fs.readFile(cachePath);
   } catch {
-    const png = await renderBaseModelPng(model, backdropId);
+    const png = await renderBaseModelPng(model, (await loadBackdrop(backdropId)) ?? backdropId);
     await fs.mkdir(cacheDir, { recursive: true });
     await fs.writeFile(cachePath, png);
     return png;
@@ -104,7 +104,7 @@ async function runGenerate(jobId: string): Promise<void> {
     const analysis: GarmentAnalysis | null = garment.analysis ?? null;
     const category = analysis?.category ?? (garment.category as GarmentAnalysis["category"]) ?? "unknown";
     const watermark = settings?.watermarkEnabled || settings?.plan === "trial" ? "Vastra Studio · preview" : null;
-    const baseModel = getBaseModel(job.baseModelId)!;
+    const baseModel = (await loadBaseModel(job.baseModelId))!;
 
     // Cut the garment out of the shop photo and neutralise the lighting cast once per job.
     // Mannequin photos then keep their garment pixels exactly; the rest go to try-on on a clean card.

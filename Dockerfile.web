@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+#
+# Vastra Studio web image (Next.js server). Pair it with the worker image
+# (Dockerfile) behind the same Postgres, Redis and object storage; see
+# docker-compose.yml for a complete self-hosted layout.
+#
+#   docker build -f Dockerfile.web -t vastra-web .
+#   docker run --rm -p 3000:3000 --env-file .env.production vastra-web
+#
+# Debian slim rather than Alpine so sharp's prebuilt glibc binaries are used.
+# `next build` runs with NODE_ENV=production; the production guard in
+# src/env.ts is skipped during the build phase and enforced when the server
+# starts, so the image builds without secrets and refuses to boot without them.
+
+FROM node:22-bookworm-slim AS base
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    CI=true \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npm install -g pnpm@10.17.1 && pnpm --version
+WORKDIR /app
+
+# ---- dependencies ----------------------------------------------------------
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# ---- build -----------------------------------------------------------------
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# A placeholder secret only satisfies the schema at build time; nothing is baked in.
+RUN AUTH_SECRET=build-time-placeholder-secret-not-used-at-runtime pnpm build
+
+# ---- runtime ---------------------------------------------------------------
+FROM base AS runner
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/.next ./.next
+COPY --from=build --chown=node:node /app/public ./public
+COPY --chown=node:node package.json next.config.ts tsconfig.json ./
+COPY --chown=node:node drizzle ./drizzle
+COPY --chown=node:node src ./src
+RUN mkdir -p /app/.data && chown -R node:node /app/.data
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["pnpm", "start"]

@@ -1,8 +1,12 @@
 import { z } from "zod";
+import { formatProductionIssues, productionIssues } from "@/lib/config/production-guard";
 
 /**
  * Server-side environment. Validated once at boot so a misconfigured deploy
- * fails loudly instead of at the first request.
+ * fails loudly instead of at the first request. In production a second pass
+ * (src/lib/config/production-guard.ts) refuses to start on the embedded
+ * database, local storage, the in-process queue, console mail or a mock
+ * provider, and lists everything that is missing in one message.
  */
 const optional = z.string().optional().or(z.literal(""));
 
@@ -13,6 +17,8 @@ const schema = z.object({
   PLATFORM_ADMIN_EMAILS: z.string().default(""),
 
   DATABASE_URL: optional,
+  /** Connections per web or worker process; keep (instances x this) under the Postgres limit. */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   REDIS_URL: optional,
 
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
@@ -42,6 +48,8 @@ const schema = z.object({
   FAL_KEY: optional,
   FAL_KLING_MODEL: z.string().default("fal-ai/kling-video/v3/standard/image-to-video"),
   GEMINI_VIDEO_MODEL: z.string().default("gemini-omni-1.1-flash"),
+  /** Staging only: lets a production build run with mock providers. */
+  ALLOW_MOCK_PROVIDERS: optional,
 
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
@@ -55,6 +63,8 @@ const schema = z.object({
 
   TRIAL_CREDITS: z.coerce.number().int().min(0).default(100),
   TENANT_JOBS_PER_HOUR: z.coerce.number().int().min(1).default(60),
+  /** json (one object per line, for log drains) | pretty (development). Defaults to json in production. */
+  LOG_FORMAT: z.enum(["json", "pretty"]).optional(),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -82,6 +92,12 @@ function resolveAuto(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return out;
 }
 
+/**
+ * `next build` runs with NODE_ENV=production but has no database, storage or
+ * Redis to reach; the guard applies to the running server, not the compiler.
+ */
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
 function load(): Env {
   const parsed = schema.safeParse(resolveAuto(process.env));
   if (!parsed.success) {
@@ -90,11 +106,19 @@ function load(): Env {
       .join("\n");
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
+  if (!isBuildPhase) {
+    const issues = productionIssues(parsed.data);
+    if (issues.length) {
+      const message = formatProductionIssues(issues);
+      console.error(message);
+      throw new Error(message);
+    }
+  }
   return parsed.data;
 }
 
 declare global {
-   
+
   var __vastraEnv: Env | undefined;
 }
 

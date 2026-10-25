@@ -11,7 +11,7 @@ import { orderForArc, selectionIsValid } from "@/lib/reels/arc";
 import { getQueue } from "@/lib/queue";
 import { newId } from "@/lib/ids";
 import { audit } from "@/lib/dal/audit";
-import { clientIp } from "@/lib/security/request";
+import { clientIp, enforceLimit, limitMessage } from "@/lib/security/request";
 import { env } from "@/env";
 import type { ActionResult } from "./garments";
 
@@ -34,6 +34,8 @@ export async function startReelStills(input: z.input<typeof startSchema>): Promi
   const image = await getImage(ctx.tenant.id, imageId);
   if (!image || image.garment.deletedAt) return { ok: false, error: "That image is no longer available." };
 
+  const limit = await enforceLimit("reel", { tenantId: ctx.tenant.id, userId: ctx.user.id });
+  if (!limit.ok) return { ok: false, error: limitMessage("reel", limit) };
   const recent = await countRecentReels(ctx.tenant.id, 60 * 60 * 1000);
   if (recent >= Math.max(5, Math.floor(env.TENANT_JOBS_PER_HOUR / 4))) return { ok: false, error: "You have reached the hourly reel limit. Please try again shortly." };
 

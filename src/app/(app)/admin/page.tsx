@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { requirePlatformAdmin } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
@@ -59,6 +60,26 @@ async function Admin() {
       </section>
 
       <ProviderSwitchesPanel providers={tryOnProviderOrder} switches={switches ?? {}} />
+
+      <Card className="p-6">
+        <h2 className="text-xl">Editable content</h2>
+        <p className="mt-1 text-sm text-ink-2">The model library, backdrops, credit packs, reel scenes and the landing copy live in the database and are edited here. Every change is audited.</p>
+        <ul className="mt-4 flex flex-wrap gap-2">
+          {[
+            ["/admin/content/base-models", "Base models"],
+            ["/admin/content/backdrops", "Backdrops"],
+            ["/admin/content/credit-packs", "Credit packs"],
+            ["/admin/content/reel-scenes", "Reel scenes"],
+            ["/admin/content/copy", "App copy"],
+          ].map(([href, label]) => (
+            <li key={href}>
+              <Link href={href} className="rounded-full border border-line px-3 py-1.5 text-sm text-ink hover:bg-surface-2">
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Card>
 
       <section>
         <h2 className="text-xl">Boutiques</h2>

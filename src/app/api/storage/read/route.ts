@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { LocalStorage, verifyLocalToken } from "@/lib/storage/local";
+import { ASSET_CACHE_CONTROL } from "@/lib/storage/types";
 import { env } from "@/env";
 
 function contentTypeFor(key: string): string {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
   }
   const headers: Record<string, string> = {
     "Content-Type": contentTypeFor(payload.k),
-    "Cache-Control": "private, max-age=3600, immutable",
+    "Cache-Control": ASSET_CACHE_CONTROL,
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": "inline",
     "Accept-Ranges": "bytes",

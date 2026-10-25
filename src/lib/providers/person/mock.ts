@@ -1,5 +1,6 @@
 import sharp from "sharp";
-import { BASE_MODELS, type BaseModel } from "@/lib/base-models/catalog";
+import type { BaseModel } from "@/lib/base-models/catalog";
+import { loadBackdrop, loadBaseModels } from "@/lib/dal/content";
 import { renderBaseModelPng } from "@/lib/base-models/render";
 import { placeGarment, softShadow } from "./compose";
 import { PERSON_CANVAS, type PersonGenInput, type PersonGenOutput, type PersonGenerator } from "./types";
@@ -18,7 +19,7 @@ export class MockPersonGenerator implements PersonGenerator {
 
   async generate(input: PersonGenInput): Promise<PersonGenOutput> {
     const { hints } = input;
-    const base = input.baseModelImage ?? (await renderBaseModelPng(baseModelFor(hints), hints.backdrop, PERSON_CANVAS.width, PERSON_CANVAS.height));
+    const base = input.baseModelImage ?? (await renderBaseModelPng(await baseModelFor(hints), (await loadBackdrop(hints.backdrop)) ?? hints.backdrop, PERSON_CANVAS.width, PERSON_CANVAS.height));
     const placed = await placeGarment(input.garmentCutout, input.garmentMask, input.category);
     const shadow = await softShadow(placed.canvasMask);
     const image = await sharp(base)
@@ -44,10 +45,11 @@ export class MockPersonGenerator implements PersonGenerator {
   }
 }
 
-function baseModelFor(hints: PersonGenInput["hints"]): BaseModel {
+async function baseModelFor(hints: PersonGenInput["hints"]): Promise<BaseModel> {
+  const models = await loadBaseModels();
   return (
-    BASE_MODELS.find((m) => m.bodyType === hints.bodyType && m.skinTone === hints.skinTone && m.ageRange === hints.ageRange) ??
-    BASE_MODELS.find((m) => m.bodyType === hints.bodyType && m.skinTone === hints.skinTone) ?? {
+    models.find((m) => m.bodyType === hints.bodyType && m.skinTone === hints.skinTone && m.ageRange === hints.ageRange) ??
+    models.find((m) => m.bodyType === hints.bodyType && m.skinTone === hints.skinTone) ?? {
       id: "bm-custom",
       label: "Custom",
       bodyType: hints.bodyType,

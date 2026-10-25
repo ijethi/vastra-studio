@@ -6,7 +6,8 @@ import { requireRole } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/ids";
 import { env } from "@/env";
-import { CREDIT_PACKS, type CreditPackId } from "@/lib/billing/packs";
+import type { CreditPackId } from "@/lib/billing/packs";
+import { getCreditPack } from "@/lib/dal/content";
 import { settlePayment } from "@/lib/billing/settle";
 import type { ActionResult } from "./garments";
 
@@ -17,7 +18,7 @@ export async function razorpayConfigured(): Promise<boolean> {
 /** Create a Razorpay order for a pack; the browser opens Razorpay Checkout with the returned id. */
 export async function createRazorpayOrder(packId: CreditPackId): Promise<ActionResult<{ orderId: string; amountMinor: number; currency: string; keyId: string; paymentId: string }>> {
   const ctx = await requireRole(["owner", "admin"]);
-  const pack = CREDIT_PACKS.find((p) => p.id === packId);
+  const pack = await getCreditPack(packId);
   if (!pack) return { ok: false, error: "Unknown pack." };
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) return { ok: false, error: "Payments are not configured yet." };
 
@@ -29,7 +30,7 @@ export async function createRazorpayOrder(packId: CreditPackId): Promise<ActionR
       Authorization: `Basic ${Buffer.from(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`).toString("base64")}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ amount: pack.amountMinor, currency: "INR", receipt: paymentId, notes: { tenantId: ctx.tenant.id, paymentId, packId } }),
+    body: JSON.stringify({ amount: pack.amountMinor, currency: pack.currency, receipt: paymentId, notes: { tenantId: ctx.tenant.id, paymentId, packId } }),
   });
   if (!res.ok) return { ok: false, error: "Could not start the payment. Please try again." };
   const order = (await res.json()) as { id: string };
@@ -40,11 +41,11 @@ export async function createRazorpayOrder(packId: CreditPackId): Promise<ActionR
     provider: "razorpay",
     providerRef: order.id,
     amountMinor: pack.amountMinor,
-    currency: "INR",
+    currency: pack.currency,
     credits: pack.credits,
     status: "created",
   });
-  return { ok: true, data: { orderId: order.id, amountMinor: pack.amountMinor, currency: "INR", keyId: env.RAZORPAY_KEY_ID, paymentId } };
+  return { ok: true, data: { orderId: order.id, amountMinor: pack.amountMinor, currency: pack.currency, keyId: env.RAZORPAY_KEY_ID, paymentId } };
 }
 
 /**

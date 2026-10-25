@@ -1,14 +1,17 @@
 import sharp from "sharp";
-import { SKIN_TONES, getBackdrop, type BaseModel } from "./catalog";
+import { SKIN_TONES, getBackdrop, type Backdrop, type BaseModel } from "./catalog";
 
 /**
  * Development renderer for base-model placeholders: an editorial silhouette
  * on the chosen backdrop. Production replaces these with the reviewed,
  * photoreal library; the renderer stays as the offline fallback.
+ *
+ * `backdrop` is the resolved backdrop (from the content DAL) or, for scripts
+ * that only know the defaults, its id in the static catalogue.
  */
-export async function renderBaseModelPng(model: BaseModel, backdropId: string, width = 864, height = 1296): Promise<Buffer> {
-  const backdrop = getBackdrop(backdropId);
-  const bg = backdrop?.hex ?? "#F4EFE6";
+export async function renderBaseModelPng(model: BaseModel, backdrop: string | Pick<Backdrop, "hex">, width = 864, height = 1296): Promise<Buffer> {
+  const resolved = typeof backdrop === "string" ? getBackdrop(backdrop) : backdrop;
+  const bg = resolved?.hex ?? "#F4EFE6";
   const skin = SKIN_TONES[model.skinTone].hex;
   const dark = isDark(bg);
   const shade = dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";

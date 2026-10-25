@@ -11,7 +11,7 @@ import { addGarmentPhoto, deleteGarmentPhoto, getGarmentPhoto, listGarmentPhotos
 import type { GarmentPhotoKind } from "@/lib/db/schema";
 import { getQueue } from "@/lib/queue";
 import { audit } from "@/lib/dal/audit";
-import { clientIp, rateLimit } from "@/lib/security/request";
+import { clientIp, enforceLimit, limitMessage } from "@/lib/security/request";
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -28,8 +28,8 @@ export async function requestUploadUrl(input: z.input<typeof signSchema>): Promi
   const parsed = signSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid upload request." };
   if (!ALLOWED_TYPES.has(parsed.data.contentType)) return { ok: false, error: "Please upload a JPEG, PNG, WebP or HEIC photo." };
-  const rl = rateLimit(`upload:${ctx.tenant.id}`, 120, 60 * 60 * 1000);
-  if (!rl.ok) return { ok: false, error: `Upload limit reached. Try again in ${rl.retryAfterSec}s.` };
+  const limit = await enforceLimit("upload", { tenantId: ctx.tenant.id, userId: ctx.user.id });
+  if (!limit.ok) return { ok: false, error: limitMessage("upload", limit) };
 
   const uploadId = newId("up");
   const key = keys.upload(ctx.tenant.id, uploadId);

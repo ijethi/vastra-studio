@@ -25,7 +25,7 @@ export class MockStoryboardProvider implements StoryboardProvider {
   }
 
   async generate(input: StoryboardInput): Promise<StoryboardStill[]> {
-    const scenes = SCENES[input.vibe].slice(0, Math.max(1, input.count));
+    const scenes = (input.scenes ?? SCENES[input.vibe]).slice(0, Math.max(1, input.count));
     const wash = WASH[input.vibe];
     const hero = sharp(input.heroImage).rotate();
     const meta = await hero.metadata();

@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { env } from "@/env";
-import { getBackdrop, SKIN_TONES } from "@/lib/base-models/catalog";
+import { SKIN_TONES } from "@/lib/base-models/catalog";
+import { loadBackdrop } from "@/lib/dal/content";
 import { pasteGarmentExact, placeGarment } from "./compose";
 import { PERSON_CANVAS, PersonProviderError, type PersonGenInput, type PersonGenOutput, type PersonGenerator } from "./types";
 
@@ -39,7 +40,7 @@ export class GeminiPersonGenerator implements PersonGenerator {
     const body = {
       model: env.GEMINI_IMAGE_MODEL,
       input: [
-        { type: "text", text: prompt(input) },
+        { type: "text", text: await prompt(input) },
         { type: "text", text: "Image 1, the garment already placed on the canvas. Keep it exactly here, at this size, with these colours and details:" },
         { type: "image", mime_type: "image/jpeg", data: canvas.toString("base64") },
         { type: "text", text: "Image 2, the mask: white is the garment and must not change; black is where you draw the woman and the backdrop:" },
@@ -112,9 +113,9 @@ function extractImage(json: InteractionResponse): string | null {
   return null;
 }
 
-function prompt(input: PersonGenInput): string {
+async function prompt(input: PersonGenInput): Promise<string> {
   const { hints } = input;
-  const backdrop = getBackdrop(hints.backdrop);
+  const backdrop = await loadBackdrop(hints.backdrop);
   const skin = SKIN_TONES[hints.skinTone]?.label.toLowerCase() ?? hints.skinTone;
   const body = { slim: "slim", regular: "average", curvy: "curvy", plus: "plus-size" }[hints.bodyType];
   const age = { "20s": "in her twenties", "30s": "in her thirties", "40s": "in her forties" }[hints.ageRange];

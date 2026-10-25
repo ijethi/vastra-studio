@@ -9,8 +9,10 @@ import { useToast } from "@/components/ui/toast";
 import { confirmRazorpayPayment, createRazorpayOrder } from "@/app/actions/billing";
 import type { CreditPackId } from "@/lib/billing/packs";
 import { grantDevCredits } from "@/app/actions/settings";
+import type { AppContentMap } from "@/lib/content/types";
 
 type Pack = { id: CreditPackId; credits: number; amountMinor: number; label: string; blurb: string };
+type BillingCopy = AppContentMap["billing.copy"];
 
 declare global {
   interface Window {
@@ -18,7 +20,7 @@ declare global {
   }
 }
 
-export function BillingPanel({ balance, plan, packs, razorpay, devTopUp, canBuy }: { balance: number; plan: string; packs: Pack[]; razorpay: boolean; devTopUp: boolean; canBuy: boolean }) {
+export function BillingPanel({ balance, plan, packs, copy, razorpay, devTopUp, canBuy }: { balance: number; plan: string; packs: Pack[]; copy: BillingCopy; razorpay: boolean; devTopUp: boolean; canBuy: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -67,7 +69,7 @@ export function BillingPanel({ balance, plan, packs, razorpay, devTopUp, canBuy 
           <div>
             <p className="eyebrow">Balance</p>
             <p className="mt-2 font-display text-5xl tabular-nums text-ink">{balance.toLocaleString("en-IN")}</p>
-            <p className="mt-1 text-sm text-ink-2">credits · a two-image run is 25</p>
+            <p className="mt-1 text-sm text-ink-2">{copy.balanceNote}</p>
           </div>
           <Badge tone={plan === "trial" ? "warning" : "success"} className="capitalize">
             {plan}
@@ -76,8 +78,8 @@ export function BillingPanel({ balance, plan, packs, razorpay, devTopUp, canBuy 
       </Card>
 
       <div>
-        <h2 className="text-xl">Credit packs</h2>
-        <p className="mt-1 text-sm text-ink-2">Prices include GST. Credits never expire while your account is active.</p>
+        <h2 className="text-xl">{copy.packsHeading}</h2>
+        <p className="mt-1 text-sm text-ink-2">{copy.packsNote}</p>
         {!razorpay ? (
           <div className="mt-4">
             <Alert tone="neutral" title="Payments are not switched on yet">
@@ -86,13 +88,13 @@ export function BillingPanel({ balance, plan, packs, razorpay, devTopUp, canBuy 
           </div>
         ) : null}
         <ul className="mt-4 grid gap-3 sm:grid-cols-3">
-          {packs.map((p) => (
+          {packs.map((p, i) => (
             <li key={p.id} className="card flex flex-col p-5">
               <p className="text-sm font-medium text-ink-2">{p.label}</p>
               <p className="mt-2 font-display text-3xl text-ink">{p.credits.toLocaleString("en-IN")}</p>
               <p className="text-xs text-ink-3">credits · {p.blurb}</p>
               <p className="mt-4 text-lg font-medium text-ink">₹{(p.amountMinor / 100).toLocaleString("en-IN")}</p>
-              <Button className="mt-4" variant={p.id === "boutique" ? "primary" : "secondary"} disabled={!razorpay || !canBuy || busy !== null} onClick={() => buy(p)}>
+              <Button className="mt-4" variant={i === Math.min(1, packs.length - 1) ? "primary" : "secondary"} disabled={!razorpay || !canBuy || busy !== null} onClick={() => buy(p)}>
                 {busy === p.id ? <Spinner /> : null} Buy
               </Button>
             </li>

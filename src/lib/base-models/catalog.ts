@@ -1,8 +1,14 @@
 /**
- * Curated base-model library. Every entry is an AI-generated, rights-clear
- * image reviewed by a human before it enters the library. No real person's
- * likeness is used. In development the images are placeholder renders made by
- * `pnpm seed:base-models`; in production they are replaced by the reviewed set.
+ * Default base-model library and backdrops. Every entry is an AI-generated,
+ * rights-clear image reviewed by a human before it enters the library. No
+ * real person's likeness is used. In development the images are placeholder
+ * renders made by `pnpm seed:base-models`.
+ *
+ * These constants seed the `base_models` and `backdrops` tables and remain
+ * the offline fallback. The live catalogue is edited in the admin console
+ * and read through src/lib/dal/content.ts (`getBaseModels`, `getBackdrops`,
+ * `loadBaseModel`, ...). The synchronous `getBaseModel` / `getBackdrop`
+ * below only see the defaults; new code should use the DAL.
  */
 
 export type BodyType = "slim" | "regular" | "curvy" | "plus";

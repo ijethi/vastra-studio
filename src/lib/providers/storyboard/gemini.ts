@@ -30,7 +30,7 @@ export class GeminiStoryboardProvider implements StoryboardProvider {
 
   async generate(input: StoryboardInput): Promise<StoryboardStill[]> {
     if (!env.GEMINI_API_KEY) throw new StoryboardProviderError(this.name, "GEMINI_API_KEY not set", false);
-    const scenes = SCENES[input.vibe].slice(0, Math.max(1, input.count));
+    const scenes = (input.scenes ?? SCENES[input.vibe]).slice(0, Math.max(1, input.count));
     const hero = await sharp(input.heroImage).rotate().resize(1024, 1536, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 92 }).toBuffer();
     const garment = describeGarment(input.garmentAnalysis, input.garmentTitle);
     const refs: Array<{ kind: string; data: string }> = [];

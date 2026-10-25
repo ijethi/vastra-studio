@@ -6,11 +6,11 @@ import { requireTenant } from "@/lib/auth/session";
 import { getGarment } from "@/lib/dal/garments";
 import { countRecentJobs, createJob, findJobByIdempotencyKey, getImage, setImageAccepted, updateJob } from "@/lib/dal/jobs";
 import { chargeCredits, creditsForRun, InsufficientCreditsError, SpendCapError } from "@/lib/dal/tenants";
-import { getBackdrop, getBaseModel } from "@/lib/base-models/catalog";
+import { getBackdrop, getBaseModel } from "@/lib/dal/content";
 import { getQueue } from "@/lib/queue";
 import { newId } from "@/lib/ids";
 import { audit } from "@/lib/dal/audit";
-import { clientIp } from "@/lib/security/request";
+import { clientIp, enforceLimit, limitMessage } from "@/lib/security/request";
 import { env } from "@/env";
 import type { ActionResult } from "./garments";
 
@@ -35,9 +35,13 @@ export async function createGenerationJob(input: z.input<typeof createSchema>): 
   const garment = await getGarment(ctx.tenant.id, garmentId);
   if (!garment) return { ok: false, error: "Garment not found." };
   if (garment.status === "unusable") return { ok: false, error: "This photo was flagged as unusable. Please upload a clearer one." };
-  if (!getBaseModel(baseModelId)) return { ok: false, error: "Please choose a model." };
-  if (!getBackdrop(backdrop)) return { ok: false, error: "Please choose a backdrop." };
+  if (!(await getBaseModel(baseModelId))) return { ok: false, error: "Please choose a model." };
+  if (!(await getBackdrop(backdrop))) return { ok: false, error: "Please choose a backdrop." };
 
+  // Two fences: the shared sliding window (per user and per boutique, Redis-backed in production)
+  // and the durable count of jobs this boutique created in the last hour.
+  const limit = await enforceLimit("job", { tenantId: ctx.tenant.id, userId: ctx.user.id });
+  if (!limit.ok) return { ok: false, error: limitMessage("job", limit) };
   const recent = await countRecentJobs(ctx.tenant.id, 60 * 60 * 1000);
   if (recent >= env.TENANT_JOBS_PER_HOUR) return { ok: false, error: "You have reached the hourly generation limit. Please try again shortly." };
 

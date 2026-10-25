@@ -266,6 +266,8 @@ export const generationJobs = pgTable(
   (t) => [
     index("jobs_tenant_created_idx").on(t.tenantId, t.createdAt),
     index("jobs_status_idx").on(t.status),
+    /** Gallery polling and the SSE routes filter one tenant's jobs by status. */
+    index("jobs_tenant_status_idx").on(t.tenantId, t.status),
     uniqueIndex("jobs_idempotency_idx").on(t.tenantId, t.idempotencyKey),
   ],
 );
@@ -428,6 +430,7 @@ export const reelJobs = pgTable(
     index("reels_tenant_created_idx").on(t.tenantId, t.createdAt),
     index("reels_garment_idx").on(t.garmentId),
     index("reels_status_idx").on(t.status),
+    index("reels_tenant_status_idx").on(t.tenantId, t.status),
     uniqueIndex("reels_idempotency_idx").on(t.tenantId, t.idempotencyKey),
   ],
 );
@@ -489,6 +492,93 @@ export const platformSettings = pgTable("platform_settings", {
   updatedBy: text("updated_by"),
 });
 
+/* ------------------------------------------------------------------ */
+/* Editable content. Platform-wide rows the admin console maintains;     */
+/* seeded from the typed defaults in src/lib/base-models/catalog.ts,     */
+/* src/lib/billing/packs.ts and src/lib/reels/scenes.ts on first boot.   */
+/* ------------------------------------------------------------------ */
+
+export const baseModels = pgTable(
+  "base_models",
+  {
+    id: text("id").primaryKey(),
+    label: text("label").notNull(),
+    bodyType: text("body_type").notNull(),
+    skinTone: text("skin_tone").notNull(),
+    ageRange: text("age_range").notNull(),
+    pose: text("pose").notNull().default("front"),
+    /** Storage key of the reviewed preview render (uploaded from the admin console). */
+    imageKey: text("image_key"),
+    /** Absolute or site-relative URL of the preview when it is not in storage. */
+    imageUrl: text("image_url"),
+    width: integer("width").notNull().default(864),
+    height: integer("height").notNull().default(1296),
+    licenceNote: text("licence_note").notNull().default(""),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("base_models_active_sort_idx").on(t.active, t.sort)],
+);
+
+export const backdrops = pgTable(
+  "backdrops",
+  {
+    id: text("id").primaryKey(),
+    label: text("label").notNull(),
+    description: text("description").notNull().default(""),
+    hex: text("hex").notNull(),
+    kind: text("kind").notNull().default("studio"),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("backdrops_active_sort_idx").on(t.active, t.sort)],
+);
+
+export const creditPacks = pgTable(
+  "credit_packs",
+  {
+    id: text("id").primaryKey(),
+    label: text("label").notNull(),
+    blurb: text("blurb").notNull().default(""),
+    credits: integer("credits").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("credit_packs_active_sort_idx").on(t.active, t.sort)],
+);
+
+export const reelScenes = pgTable(
+  "reel_scenes",
+  {
+    id: text("id").primaryKey(),
+    vibe: text("vibe").$type<ReelVibe>().notNull(),
+    label: text("label").notNull(),
+    shotType: text("shot_type").$type<ReelShotType>().notNull(),
+    prompt: text("prompt").notNull(),
+    sort: integer("sort").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("reel_scenes_vibe_sort_idx").on(t.vibe, t.sort)],
+);
+
+/** Editable copy and small config blobs (landing hero, pricing blurb, garment list, studio defaults). */
+export const appContent = pgTable("app_content", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: text("updated_by"),
+});
+
 /* Relations (used by the relational query API) */
 export const garmentRelations = relations(garments, ({ many }) => ({
   images: many(generatedImages),
@@ -518,3 +608,7 @@ export type GeneratedImage = typeof generatedImages.$inferSelect;
 export type TenantSettings = typeof tenantSettings.$inferSelect;
 export type ReelJob = typeof reelJobs.$inferSelect;
 export type ReelAsset = typeof reelAssets.$inferSelect;
+export type BaseModelRow = typeof baseModels.$inferSelect;
+export type BackdropRow = typeof backdrops.$inferSelect;
+export type CreditPackRow = typeof creditPacks.$inferSelect;
+export type ReelSceneRow = typeof reelScenes.$inferSelect;

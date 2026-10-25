@@ -1,4 +1,5 @@
 import type { GarmentAnalysis, ReelShotType, ReelVibe } from "@/lib/db/schema";
+import type { Scene } from "@/lib/reels/scenes";
 
 export type StoryboardInput = {
   /** JPEG/PNG bytes of the finished on-model image the scenes are drawn from. */
@@ -8,6 +9,8 @@ export type StoryboardInput = {
   garmentAnalysis: GarmentAnalysis | null;
   garmentTitle: string;
   vibe: ReelVibe;
+  /** The scene list for the vibe (from the content tables). Falls back to the built-in defaults when omitted. */
+  scenes?: Scene[];
   /** How many scene stills to make; scenes beyond the vibe's list are not generated. */
   count: number;
   /** Per-still ceiling. */

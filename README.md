@@ -90,7 +90,10 @@ src/
     providers/    tryon/ (mock, gemini, google) and vision/ (mock, claude)
     queue/        in-process and BullMQ adapters
     storage/      local and S3 adapters with signed URLs
-    base-models/  curated library catalogue + dev renderer
+    base-models/  default library catalogue (seed source) + dev renderer
+    content/      editable-content store, typed app copy, seed, memo
+    config/       production configuration guard
+    security/     rate limiter (memory / Redis sliding window), request helpers
 drizzle/          SQL migrations (generated with `pnpm db:generate`)
 scripts/          seed, migrate, worker
 ```
@@ -104,6 +107,22 @@ GEMINI_API_KEY=... pnpm tsx --conditions=react-server scripts/generate-base-mode
 ```
 
 Renders go to the `library/` prefix in storage (picked up automatically by the pipeline) and ivory previews to `public/base-models`. Use `--only <model-id>` or `--backdrops studio-ivory,festive-marigold` to redo a subset.
+
+## Editable content (no hardcoded catalogue)
+
+Everything boutiques see that is not their own data lives in the database and is edited from the admin console at `/admin/content` (platform admins only, every change audited):
+
+| Table | What | Edited at |
+| --- | --- | --- |
+| `base_models` | the model library (label, body type, skin tone, age, pose, preview, licence note, active, sort) | `/admin/content/base-models`, with an upload for the preview card and for the per-backdrop photoreal render the pipeline composites on |
+| `backdrops` | label, description, hex, kind, active, sort | `/admin/content/backdrops` |
+| `credit_packs` | label, blurb, credits, price (stored in paise), currency, active, sort | `/admin/content/credit-packs` |
+| `reel_scenes` | the nine scenes per vibe (label, shot type, prompt, sort, active) | `/admin/content/reel-scenes` |
+| `app_content` | typed JSON copy: landing hero, pricing band, garment list, studio defaults, billing copy, reel vibes (`src/lib/content/types.ts`) | `/admin/content/copy` |
+
+The old constants in `src/lib/base-models/catalog.ts`, `src/lib/billing/packs.ts` and `src/lib/reels/scenes.ts` are now the **seed source and offline fallback**. Migrations run at boot and `seedContentIfEmpty` fills any empty table from them, so a fresh deploy has content without a manual step; `pnpm seed:content` does the same by hand and `pnpm seed:content --force` restores the defaults (also a button on `/admin/content`).
+
+Readers live in `src/lib/dal/content.ts`: `getBaseModels()`, `getBackdrops()`, `getCreditPacks()`, `getReelScenes(vibe)`, `getAppContent(key)` are `use cache` functions tagged `content` for pages, actions and route handlers (revalidated after a minute or immediately on an admin edit through `updateTag`). The `load*` variants are the same reads with a 30-second in-process memo and no `use cache`, for the worker and anything else that runs outside a request. Every reader falls back to the built-in defaults when its table is empty or the database is unreachable, so the studio never renders without models.
 
 ## Extra garment angles
 
@@ -120,6 +139,7 @@ pnpm test:e2e       # Playwright end-to-end tests (see below)
 pnpm db:generate    # regenerate migrations after editing src/lib/db/schema.ts
 pnpm db:migrate     # apply migrations to DATABASE_URL (also happens at boot)
 pnpm db:rls         # apply drizzle/rls.sql (row-level security) to DATABASE_URL
+pnpm seed:content   # fill empty content tables from the defaults (--force restores them)
 pnpm worker         # standalone worker (REDIS_URL required)
 ```
 
@@ -153,8 +173,8 @@ Target layout, all in Mumbai: the web tier on **Vercel** (`bom1`), the worker an
 
 1. Create the Postgres database and an **owner** role (the one that runs DDL). Point `DATABASE_URL` at it and run `pnpm db:migrate`. The app also applies pending migrations at boot (`src/lib/db/index.ts`), so a deploy with a new migration self-heals.
 2. Apply the second fence: `pnpm db:rls` runs [`drizzle/rls.sql`](drizzle/rls.sql) as the owner. It creates a non-superuser `vastra_app` role (`NOBYPASSRLS`), enables row-level security on `garments`, `generation_jobs`, `generated_images`, `credit_ledger`, `payments`, `share_links`, `audit_log` and `tenant_settings`, and adds policies keyed on `current_setting('app.tenant_id', true)`. It is idempotent. Pass `VASTRA_APP_PASSWORD` to set the role's password in the same run.
-3. The app pins the tenant per transaction with `withTenant(db, tenantId, fn)` from [`src/lib/db/tenant.ts`](src/lib/db/tenant.ts), which runs `SELECT set_config('app.tenant_id', $1, true)` (transaction-local, pooler-safe) before `fn`. The data-access layer does not use it yet; its explicit `tenant_id` predicates remain the only fence until that follow-up lands.
-4. Only after the DAL goes through `withTenant`, switch the web and worker `DATABASE_URL` to the `vastra_app` role. Table owners bypass RLS (the file deliberately does not `FORCE ROW LEVEL SECURITY`), so applying `rls.sql` today changes nothing for the owner connection. With `vastra_app`, a query that forgets `withTenant` sees no rows and can insert none.
+3. The app pins the tenant per transaction with `withTenant(db, tenantId, fn)` from [`src/lib/db/tenant.ts`](src/lib/db/tenant.ts), which runs `SELECT set_config('app.tenant_id', $1, true)` (transaction-local, pooler-safe) before `fn`. The tenant-scoped data-access layer (garments, garment photos, images, jobs, reels) goes through it via `scoped()` in `src/lib/dal/scope.ts`, with the explicit `tenant_id` predicates kept as the first fence. Worker-side reads by job id, the platform-admin views and the content tables use the plain connection.
+4. Switching the web and worker `DATABASE_URL` to the `vastra_app` role is now possible for the tenant tables; the worker-side and admin reads listed above still need the owner connection (or admin policies) first, so keep the owner URL for them. Table owners bypass RLS (the file deliberately does not `FORCE ROW LEVEL SECURITY`), so applying `rls.sql` today changes nothing for the owner connection. With `vastra_app`, a query that forgets `withTenant` sees no rows and can insert none.
 
 Keep two connection strings: the owner URL for `pnpm db:migrate` and `pnpm db:rls`, and the `vastra_app` URL for the running app once step 4 applies.
 
@@ -182,12 +202,48 @@ Create Redis in the same region (`fly redis create` in `bom`, or a Railway Redis
 
 The same image runs anywhere that takes a Dockerfile (Railway: add a service from the repo, set the variables, no start command needed since the image defines `CMD`).
 
-### Pre-launch checklist
+### Production guard
 
-- `pnpm db:migrate` then `pnpm db:rls` against the production database, as the owner.
-- Razorpay and Resend webhooks pointed at the Vercel `APP_URL`.
-- `APP_URL` set to the final domain before the first sign-in email goes out (it is baked into auth callbacks and share links).
-- Secrets live only in Vercel and Fly; nothing in the repository, nothing in the image.
+With `NODE_ENV=production` the server refuses to start, printing one list of everything missing, unless `DATABASE_URL`, `REDIS_URL`, `STORAGE_DRIVER=s3` with `S3_BUCKET`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`, `RESEND_API_KEY` and a 32+ character `AUTH_SECRET` are set and no provider resolves to a mock (`src/lib/config/production-guard.ts`). `ALLOW_MOCK_PROVIDERS=1` lifts only the provider rule, for a staging box. `next build` is exempt (it has nothing to connect to); the check runs when the server boots.
+
+### Health, logs and limits
+
+- `GET /api/health` answers `200 {ok:true, checks:{db,storage,queue}}` or `503` with the failing check and its error, never cached. Point the load balancer, Vercel checks or an uptime monitor at it; the web Docker image uses it as its `HEALTHCHECK`.
+- Every request gets an `x-request-id` (the platform's if it sent one) in `src/proxy.ts`, echoed on the response and written as one JSON line per request (`{"ts","level","msg":"request","requestId","method","path","ip","ua"}`). `src/lib/log.ts` is the logger for server code; `LOG_FORMAT=pretty` switches to readable lines (the default outside production).
+- Rate limits are sliding windows per user **and** per boutique for uploads, generation runs, reels and share links (`LIMITS` in `src/lib/security/request.ts`). With `REDIS_URL` they are shared across instances through one atomic Lua script; without it they are per process. Redis errors fail open and are logged. Generation runs keep the durable hourly count in the database as a second fence.
+- Tenant-scoped DAL reads and writes (garments, images, jobs, reels, photos) run inside `withTenant`, which pins `app.tenant_id` for the row-level-security policies in `drizzle/rls.sql`; the SSE routes poll one indexed row per second and only sign URLs, in one batch, when something changed.
+- Signed asset reads carry `Cache-Control: private, max-age=86400, immutable` (keys never change content), both on the local read route and on S3 objects and presigned URLs.
+
+### Self-hosting with Docker Compose
+
+`docker-compose.yml` runs the whole product on one box: `web` (from `Dockerfile.web`), `worker` (from `Dockerfile`), Postgres 16, Redis 7 and MinIO with a private `vastra` bucket. Only secrets and provider keys go in `.env.production`; the infrastructure variables are set by the compose file.
+
+```bash
+cp .env.example .env.production   # AUTH_SECRET, RESEND_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY, PLATFORM_ADMIN_EMAILS, APP_URL
+```
+
+```bash
+docker compose up -d --build
+```
+
+Then open `http://localhost:3000/api/health`. Migrations and the content seed run when `web` starts. For a staging box on the mocks add `ALLOW_MOCK_PROVIDERS=1` to `.env.production`. The compose file was written against the documented images and the two Dockerfiles; it has not been run on this machine (no Docker here), so treat the first `docker compose up` as a test.
+
+### Launch checklist (managed services)
+
+Work through these in order; each step is a few minutes.
+
+1. **Postgres: Neon or Supabase (Mumbai).** Create a project, copy the pooled connection string into `DATABASE_URL`. Run `pnpm db:migrate` locally against it (applies migrations and seeds the content tables), then `pnpm db:rls` as the owner role. Keep the owner URL for migrations; the app can later run as `vastra_app` (see "Database" above).
+2. **Redis: Upstash (ap-south-1).** Create a database, copy the `rediss://` URL into `REDIS_URL`. Both the web tier and the worker need it (queue, rate limits).
+3. **Object storage: Cloudflare R2.** Create a private bucket, an API token with object read/write, and set `STORAGE_DRIVER=s3`, `S3_ENDPOINT=https://<account id>.r2.cloudflarestorage.com`, `S3_REGION=auto`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`. Leave `S3_PUBLIC_BASE_URL` empty unless you put a CDN in front with signed access.
+4. **Email: Resend.** Verify the sending domain, create an API key (`RESEND_API_KEY`), set `EMAIL_FROM` to an address on that domain.
+5. **Payments: Razorpay.** From the dashboard copy `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`; add a webhook for `payment.captured` and `order.paid` pointing at `https://<your domain>/api/webhooks/razorpay` and put its secret in `RAZORPAY_WEBHOOK_SECRET`. Review the packs at `/admin/content/credit-packs`.
+6. **AI keys.** `GEMINI_API_KEY` (Google AI Studio: try-on, exact-garment, reel scenes and video) and `ANTHROPIC_API_KEY` (Claude vision gate). Optional: `FAL_KEY` for Kling clips, the Google Virtual Try-On credentials. Providers switch on from the keys; do not set `ALLOW_MOCK_PROVIDERS` in production.
+7. **Secrets.** `AUTH_SECRET` (32+ random characters, `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`), `APP_URL` set to the final domain **before** the first sign-in email goes out (it is baked into callbacks and share links), `PLATFORM_ADMIN_EMAILS` with your address.
+8. **Web tier: Vercel.** Import the repository (`vercel.json` pins `bom1`), paste every variable from steps 1 to 7 into the project, deploy. Check `https://<your domain>/api/health` returns `ok:true`.
+9. **Worker: Fly.io.** `fly launch --no-deploy --copy-config`, then `fly secrets set` with the same `DATABASE_URL`, `REDIS_URL`, `AUTH_SECRET`, `STORAGE_DRIVER`, `S3_*`, `RESEND_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, and `fly deploy`. The worker refuses to boot with the same guard as the web tier, so a missing key shows up in `fly logs` immediately.
+10. **Content.** Sign in as a platform admin, open `/admin/content`. The seed already filled the tables; review the credit packs, backdrops and landing copy, and upload the reviewed base-model previews and renders (or run the library script once: `GEMINI_API_KEY=... STORAGE_DRIVER=s3 S3_*=... pnpm tsx --conditions=react-server scripts/generate-base-model-library.ts`, which writes the per-backdrop renders to the same `library/<model>/<backdrop>.jpg` keys the pipeline and the admin upload use).
+11. **Smoke test.** Sign in with a real email, create a boutique, upload a garment, generate two images, buy the smallest pack with a Razorpay test card, make a reel, open a share link in a private window.
+12. **Keep watching.** Add `/api/health` to an uptime monitor, forward the JSON logs to a drain, and set Vercel and Fly alerts on error rate.
 
 ## Security notes
 
