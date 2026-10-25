@@ -2,17 +2,18 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Badge, Card } from "@/components/ui/primitives";
+import { Badge } from "@/components/ui/primitives";
 import { deleteReelSceneAction, saveReelScene } from "@/app/actions/content";
-import { CheckField, DangerButton, Field, formValues, SelectField, SHOT_TYPE_OPTIONS, SubmitButton, TextAreaField, useAction, VIBE_OPTIONS } from "../_shared";
+import { AddToggle, CheckField, DangerButton, EditPanel, Field, FORM_GRID, FormFooter, formValues, LiveCount, Meta, Row, RowList, Section, SelectField, SHOT_TYPE_OPTIONS, StatusBadge, SubmitButton, TextAreaField, useAction, VIBE_OPTIONS } from "../_shared";
 
-type Row = { id: string; vibe: string; label: string; shotType: string; prompt: string; active: boolean; sort: number };
+type SceneRow = { id: string; vibe: string; label: string; shotType: string; prompt: string; active: boolean; sort: number };
+type Vibe = { id: string; label: string; tagline: string };
 
-function SceneForm({ row, vibe, onDone }: { row?: Row; vibe?: string; onDone?: () => void }) {
+function SceneForm({ row, vibe, onDone }: { row?: SceneRow; vibe?: string; onDone?: () => void }) {
   const { busy, run } = useAction();
   return (
     <form
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className={FORM_GRID}
       onSubmit={async (e) => {
         e.preventDefault();
         const ok = await run("save", () => saveReelScene(formValues(e.currentTarget) as Parameters<typeof saveReelScene>[0]));
@@ -23,56 +24,64 @@ function SceneForm({ row, vibe, onDone }: { row?: Row; vibe?: string; onDone?: (
       <SelectField label="Vibe" name="vibe" defaultValue={row?.vibe ?? vibe ?? "everyday"} options={VIBE_OPTIONS} />
       <Field label="Label" name="label" defaultValue={row?.label} required placeholder="Rooftop golden hour" />
       <SelectField label="Shot type" name="shotType" defaultValue={row?.shotType ?? "full-body"} options={SHOT_TYPE_OPTIONS} />
-      <div className="sm:col-span-2 lg:col-span-3">
-        <TextAreaField label="Scene prompt" name="prompt" defaultValue={row?.prompt} rows={2} hint="Continues the sentence 'Scene: she is …'" />
-      </div>
+      <TextAreaField label="Scene prompt" name="prompt" defaultValue={row?.prompt} rows={2} hint="Continues the sentence 'Scene: she is …'" className="sm:col-span-2 lg:col-span-3" />
       <Field label="Sort" name="sort" type="number" defaultValue={row?.sort ?? 0} />
-      <div className="flex items-end gap-4 sm:col-span-2">
-        <CheckField label="Active" name="active" defaultChecked={row?.active ?? true} />
-        <SubmitButton busy={busy !== null}>{row ? "Save" : "Add"}</SubmitButton>
-      </div>
+      <FormFooter submit={<SubmitButton busy={busy !== null}>{row ? "Save scene" : "Add scene"}</SubmitButton>}>
+        <CheckField label="Live" name="active" defaultChecked={row?.active ?? true} />
+      </FormFooter>
     </form>
   );
 }
 
-export function ReelSceneEditor({ rows }: { rows: Row[] }) {
+export function ReelSceneEditor({ rows, vibes }: { rows: SceneRow[]; vibes: Vibe[] }) {
   const { busy, run } = useAction();
   const [editing, setEditing] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState<string | null>(null);
-  const vibes = VIBE_OPTIONS.map((v) => v.value);
   return (
-    <div className="space-y-8">
-      {vibes.map((vibe) => (
-        <section key={vibe}>
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <h2 className="text-xl capitalize">{vibe}</h2>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setAdding(adding === vibe ? null : vibe)}>
-              {adding === vibe ? "Close" : "New scene"}
-            </Button>
-          </div>
-          {adding === vibe ? (
-            <Card className="mb-3 p-4">
-              <SceneForm vibe={vibe} onDone={() => setAdding(null)} />
-            </Card>
-          ) : null}
-          <ul className="space-y-2">
-            {rows
-              .filter((s) => s.vibe === vibe)
-              .map((s) => (
-                <li key={s.id}>
-                  <Card className="p-4">
-                    <div className="flex flex-wrap items-start gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-medium text-ink">{s.label}</p>
-                          <code className="text-xs text-ink-3">{s.id}</code>
-                          <Badge tone="neutral">{s.shotType}</Badge>
-                          <Badge tone={s.active ? "success" : "neutral"}>{s.active ? "active" : "hidden"}</Badge>
-                          <span className="text-xs text-ink-3">sort {s.sort}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-ink-2">{s.prompt}</p>
-                      </div>
-                      <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(editing === s.id ? null : s.id)}>
+    <div className="space-y-6">
+      {vibes.map((vibe) => {
+        const scenes = rows.filter((s) => s.vibe === vibe.id);
+        return (
+          <Section
+            key={vibe.id}
+            title={vibe.label}
+            description={vibe.tagline}
+            aside={
+              <>
+                <LiveCount live={scenes.filter((s) => s.active).length} total={scenes.length} noun="scenes" />
+                <AddToggle open={adding === vibe.id} onToggle={() => setAdding(adding === vibe.id ? null : vibe.id)}>
+                  New scene
+                </AddToggle>
+              </>
+            }
+          >
+            {adding === vibe.id ? (
+              <EditPanel title={`New ${vibe.label.toLowerCase()} scene`} className="mt-5">
+                <SceneForm vibe={vibe.id} onDone={() => setAdding(null)} />
+              </EditPanel>
+            ) : null}
+            <RowList>
+              {scenes.length === 0 ? <li className="py-6 text-sm text-ink-3">No scenes yet. Reels fall back to the built-in nine for this vibe.</li> : null}
+              {scenes.map((s, i) => (
+                <Row
+                  key={s.id}
+                  leading={
+                    <span className="grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 font-display text-sm font-bold tabular-nums text-ink-2" aria-hidden="true">
+                      {i + 1}
+                    </span>
+                  }
+                  title={s.label}
+                  id={s.id}
+                  badges={
+                    <>
+                      <Badge tone="neutral">{SHOT_TYPE_OPTIONS.find((o) => o.value === s.shotType)?.label ?? s.shotType}</Badge>
+                      <StatusBadge active={s.active} />
+                    </>
+                  }
+                  meta={<Meta items={[`sort ${s.sort}`]} />}
+                  actions={
+                    <>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(editing === s.id ? null : s.id)} aria-expanded={editing === s.id}>
                         {editing === s.id ? "Close" : "Edit"}
                       </Button>
                       <DangerButton
@@ -83,18 +92,19 @@ export function ReelSceneEditor({ rows }: { rows: Row[] }) {
                       >
                         Delete
                       </DangerButton>
-                    </div>
-                    {editing === s.id ? (
-                      <div className="mt-4 border-t border-line pt-4">
-                        <SceneForm row={s} onDone={() => setEditing(null)} />
-                      </div>
-                    ) : null}
-                  </Card>
-                </li>
+                    </>
+                  }
+                  expanded={editing === s.id ? <SceneForm row={s} onDone={() => setEditing(null)} /> : null}
+                >
+                  <p className="mt-1.5 text-sm leading-6 text-ink-2">
+                    <span className="text-ink-3">She is</span> {s.prompt}
+                  </p>
+                </Row>
               ))}
-          </ul>
-        </section>
-      ))}
+            </RowList>
+          </Section>
+        );
+      })}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContentTabs } from "./content-tabs";
 
 const TABS = [
   { href: "/admin/content", label: "Overview" },
@@ -18,26 +19,23 @@ export const metadata = { title: "Content" };
  */
 export default function ContentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
         <p className="eyebrow mb-2">
-          <Link href="/admin" className="hover:underline">
+          <Link href="/admin" className="transition-colors hover:text-ink">
             Platform
-          </Link>{" "}
-          · Content
+          </Link>
+          <span aria-hidden="true" className="mx-2 opacity-50">
+            /
+          </span>
+          Content
         </p>
         <h1 className="display-lg">Editable content</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-2">
+        <p className="mt-3 max-w-2xl text-[0.95rem] leading-7 text-ink-2">
           Everything boutiques see that is not their own data: the model library, backdrops, credit packs, reel scenes and the landing copy. Changes apply within a minute on every server and are recorded in the audit log.
         </p>
       </header>
-      <nav aria-label="Content sections" className="flex flex-wrap gap-2 border-b border-line pb-3">
-        {TABS.map((t) => (
-          <Link key={t.href} href={t.href} className="rounded-full border border-line px-3 py-1.5 text-sm text-ink hover:bg-surface-2">
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      <ContentTabs tabs={TABS} />
       {children}
     </div>
   );

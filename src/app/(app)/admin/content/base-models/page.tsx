@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { readBackdropRows, readBaseModelRows } from "@/lib/content/store";
 import { getStorage, READ_URL_TTL_SECONDS } from "@/lib/storage";
 import { Skeleton } from "@/components/ui/primitives";
-import { BaseModelEditor, NewBaseModel } from "./editor";
+import { BaseModelEditor } from "./editor";
 
 async function BaseModels() {
   // Request-time only: the admin console never belongs in a prerendered shell.
@@ -42,20 +42,12 @@ async function BaseModels() {
     sort: r.sort,
     renders: renderMap.get(r.id) ?? [],
   }));
-  return (
-    <div className="space-y-6">
-      <p className="text-sm text-ink-2">
-        {models.filter((m) => m.active).length} active of {models.length}. A model needs a preview (shown in the studio) and, for photoreal output, one render per backdrop in storage; without a render the pipeline draws the development placeholder.
-      </p>
-      <NewBaseModel />
-      <BaseModelEditor models={models} backdrops={backdrops.map((b) => ({ id: b.id, label: b.label }))} />
-    </div>
-  );
+  return <BaseModelEditor models={models} backdrops={backdrops.map((b) => ({ id: b.id, label: b.label }))} />;
 }
 
 export default function BaseModelsPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense fallback={<Skeleton className="h-96 rounded-[var(--radius-card)]" />}>
       <BaseModels />
     </Suspense>
   );

@@ -2,17 +2,16 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Badge, Card } from "@/components/ui/primitives";
 import { deleteCreditPackAction, saveCreditPack } from "@/app/actions/content";
-import { CheckField, DangerButton, Field, formValues, SubmitButton, useAction } from "../_shared";
+import { AddToggle, CheckField, DangerButton, EditPanel, Field, FORM_GRID, FormFooter, formValues, LiveCount, Meta, Row, RowList, Section, StatusBadge, SubmitButton, useAction } from "../_shared";
 
-type Row = { id: string; label: string; blurb: string; credits: number; amountMinor: number; currency: string; active: boolean; sort: number };
+type PackRow = { id: string; label: string; blurb: string; credits: number; amountMinor: number; currency: string; active: boolean; sort: number };
 
-function PackForm({ row, onDone }: { row?: Row; onDone?: () => void }) {
+function PackForm({ row, onDone }: { row?: PackRow; onDone?: () => void }) {
   const { busy, run } = useAction();
   return (
     <form
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className={FORM_GRID}
       onSubmit={async (e) => {
         e.preventDefault();
         const ok = await run("save", () => saveCreditPack(formValues(e.currentTarget) as Parameters<typeof saveCreditPack>[0]));
@@ -23,52 +22,64 @@ function PackForm({ row, onDone }: { row?: Row; onDone?: () => void }) {
       <Field label="Label" name="label" defaultValue={row?.label} required />
       <Field label="Credits" name="credits" type="number" defaultValue={row?.credits ?? 250} required />
       <Field label="Price (₹)" name="amountRupees" type="number" defaultValue={row ? row.amountMinor / 100 : 375} required hint="Including GST" />
-      <Field label="Blurb" name="blurb" defaultValue={row?.blurb} className="sm:col-span-2" placeholder="About 10 runs" />
+      <Field label="Blurb" name="blurb" defaultValue={row?.blurb} className="sm:col-span-2 lg:col-span-3" placeholder="About 10 runs" />
       <Field label="Sort" name="sort" type="number" defaultValue={row?.sort ?? 0} />
       <input type="hidden" name="currency" value="INR" />
-      <div className="flex items-end gap-4">
-        <CheckField label="Active" name="active" defaultChecked={row?.active ?? true} />
-        <SubmitButton busy={busy !== null}>{row ? "Save" : "Add"}</SubmitButton>
-      </div>
+      <FormFooter submit={<SubmitButton busy={busy !== null}>{row ? "Save pack" : "Add pack"}</SubmitButton>}>
+        <CheckField label="Live" name="active" defaultChecked={row?.active ?? true} />
+      </FormFooter>
     </form>
   );
 }
 
-export function CreditPackEditor({ rows }: { rows: Row[] }) {
+export function CreditPackEditor({ rows }: { rows: PackRow[] }) {
   const { busy, run } = useAction();
   const [editing, setEditing] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
   return (
-    <div className="space-y-3">
-      <Card className="p-5">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-medium text-ink">Add a credit pack</p>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setAdding((v) => !v)}>
-            {adding ? "Close" : "New pack"}
-          </Button>
-        </div>
-        {adding ? (
-          <div className="mt-4">
-            <PackForm onDone={() => setAdding(false)} />
-          </div>
-        ) : null}
-      </Card>
-      <ul className="space-y-3">
+    <Section
+      title="Credit packs"
+      description="Prices are in whole rupees here and stored in paise; Razorpay orders use the stored amount at the moment of purchase, so editing a pack never changes a payment already made. The second pack is highlighted on the billing page."
+      aside={
+        <>
+          <LiveCount live={rows.filter((p) => p.active).length} total={rows.length} />
+          <AddToggle open={adding} onToggle={() => setAdding((v) => !v)}>
+            New pack
+          </AddToggle>
+        </>
+      }
+    >
+      {adding ? (
+        <EditPanel title="New pack" className="mt-5">
+          <PackForm onDone={() => setAdding(false)} />
+        </EditPanel>
+      ) : null}
+      <RowList>
         {rows.map((p) => (
-          <li key={p.id}>
-            <Card className="p-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-ink">{p.label}</p>
-                    <code className="text-xs text-ink-3">{p.id}</code>
-                    <Badge tone={p.active ? "success" : "neutral"}>{p.active ? "active" : "hidden"}</Badge>
-                  </div>
-                  <p className="text-xs text-ink-2">
-                    {p.credits.toLocaleString("en-IN")} credits · ₹{(p.amountMinor / 100).toLocaleString("en-IN")} · {p.blurb || "no blurb"} · sort {p.sort}
-                  </p>
-                </div>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(editing === p.id ? null : p.id)}>
+          <Row
+            key={p.id}
+            leading={
+              <span className="flex h-12 min-w-12 flex-col items-center justify-center rounded-2xl bg-gold-soft px-2 font-display text-sm font-extrabold tabular-nums leading-none text-ink" aria-hidden="true">
+                {p.credits.toLocaleString("en-IN")}
+              </span>
+            }
+            title={p.label}
+            id={p.id}
+            badges={<StatusBadge active={p.active} />}
+            meta={
+              <Meta
+                items={[
+                  <span key="price" className="font-semibold text-ink">
+                    ₹{(p.amountMinor / 100).toLocaleString("en-IN")}
+                  </span>,
+                  `${p.credits.toLocaleString("en-IN")} credits`,
+                  `sort ${p.sort}`,
+                ]}
+              />
+            }
+            actions={
+              <>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(editing === p.id ? null : p.id)} aria-expanded={editing === p.id}>
                   {editing === p.id ? "Close" : "Edit"}
                 </Button>
                 <DangerButton
@@ -79,16 +90,14 @@ export function CreditPackEditor({ rows }: { rows: Row[] }) {
                 >
                   Delete
                 </DangerButton>
-              </div>
-              {editing === p.id ? (
-                <div className="mt-4 border-t border-line pt-4">
-                  <PackForm row={p} onDone={() => setEditing(null)} />
-                </div>
-              ) : null}
-            </Card>
-          </li>
+              </>
+            }
+            expanded={editing === p.id ? <PackForm row={p} onDone={() => setEditing(null)} /> : null}
+          >
+            <p className="mt-1.5 text-sm leading-6 text-ink-2">{p.blurb || <span className="text-ink-3">No blurb yet</span>}</p>
+          </Row>
         ))}
-      </ul>
-    </div>
+      </RowList>
+    </Section>
   );
 }

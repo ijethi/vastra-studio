@@ -26,8 +26,8 @@ async function AppCopy() {
   });
   return (
     <div className="space-y-6">
-      <p className="text-sm text-ink-2">
-        Each key is a small JSON object. Fields you leave out or mistype fall back to the built-in value for that field, so a bad edit never blanks a page. The landing page reads landing.* through the content DAL once it is wired to it.
+      <p className="max-w-3xl text-sm leading-6 text-ink-2">
+        Each key is a small JSON object. Fields you leave out or mistype fall back to the built-in value for that field, so a bad edit never blanks a page. The landing page reads the landing.* keys on its next render.
       </p>
       <AppCopyEditor entries={entries} />
     </div>
@@ -36,7 +36,15 @@ async function AppCopy() {
 
 export default function AppCopyPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-64 rounded-[var(--radius-card)]" />
+          ))}
+        </div>
+      }
+    >
       <AppCopy />
     </Suspense>
   );

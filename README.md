@@ -108,9 +108,15 @@ GEMINI_API_KEY=... pnpm tsx --conditions=react-server scripts/generate-base-mode
 
 Renders go to the `library/` prefix in storage (picked up automatically by the pipeline) and ivory previews to `public/base-models`. Use `--only <model-id>` or `--backdrops studio-ivory,festive-marigold` to redo a subset.
 
-## Editable content (no hardcoded catalogue)
+## Content and catalogues
 
-Everything boutiques see that is not their own data lives in the database and is edited from the admin console at `/admin/content` (platform admins only, every change audited):
+Base models, backdrops, credit packs, reel scenes and the site copy are not hardcoded: they live in the database. In short:
+
+- **Seeded** by `pnpm seed:content` (boot does the same for any empty table); the built-in defaults, including the typed shape of every copy key, are in `src/lib/content/types.ts`.
+- **Edited** at `/admin/content` by platform admins (`PLATFORM_ADMIN_EMAILS`), with the same Daylight look as the rest of the app and every change audited.
+- **Read** through `src/lib/dal/content.ts`, whose `get*` readers run under `use cache` for 60 seconds and are revalidated the moment an admin saves (`updateTag("content")`), so an edit shows on the landing page, studio and billing page within a minute at most.
+
+Everything boutiques see that is not their own data is covered:
 
 | Table | What | Edited at |
 | --- | --- | --- |

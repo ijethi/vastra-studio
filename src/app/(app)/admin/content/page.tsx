@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { ArrowUpRight } from "lucide-react";
 import { requirePlatformAdmin } from "@/lib/auth/session";
 import { getDb } from "@/lib/db";
 import { readAppContentRows, readBackdropRows, readBaseModelRows, readCreditPackRows, readReelSceneRows } from "@/lib/content/store";
-import { Card, Skeleton } from "@/components/ui/primitives";
+import { Skeleton } from "@/components/ui/primitives";
 import { RestoreDefaults } from "./restore-defaults";
 
 async function Overview() {
@@ -22,27 +23,41 @@ async function Overview() {
   ];
   return (
     <>
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => (
-          <Card key={r.href} className="p-4">
-            <Link href={r.href} className="text-sm font-medium text-ink hover:underline">
-              {r.label}
-            </Link>
-            <p className="mt-1 font-display text-2xl tabular-nums text-ink">
-              {r.active} <span className="text-base text-ink-3">active of {r.total}</span>
+          <Link
+            key={r.href}
+            href={r.href}
+            className="card group flex flex-col p-5 transition-[transform,box-shadow] duration-200 ease-[var(--ease-out-soft)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)]"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="eyebrow">{r.label}</p>
+              <ArrowUpRight className="h-4 w-4 text-ink-3 transition-colors group-hover:text-accent" aria-hidden="true" />
+            </div>
+            <p className="mt-5 font-display text-3xl font-bold tabular-nums text-ink">
+              {r.active}
+              <span className="ml-2 text-sm font-medium text-ink-3">{r.href.endsWith("/copy") ? `of ${r.total} keys saved` : `live of ${r.total}`}</span>
             </p>
-            {r.extra ? <p className="mt-1 text-xs text-ink-3">{r.extra}</p> : null}
-          </Card>
+            <p className="mt-1 min-h-5 text-xs text-ink-3">{r.extra ?? ""}</p>
+          </Link>
         ))}
+        <RestoreDefaults />
       </section>
-      <RestoreDefaults />
     </>
   );
 }
 
 export default function ContentOverviewPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-40" />}>
+    <Suspense
+      fallback={
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-36 rounded-[var(--radius-card)]" />
+          ))}
+        </div>
+      }
+    >
       <Overview />
     </Suspense>
   );
