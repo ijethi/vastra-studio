@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Camera, Check, Clapperboard, MessageCircle, ShieldCheck, Sparkles, Users } from "lucide-react";
@@ -13,11 +14,13 @@ export const metadata = { title: { absolute: "Vastra Studio · Your suit, on a m
 const BEFORE = "/samples/real-mannequin-coral-kurta.webp";
 const AFTER = "/samples/reference-on-model-coral-kurta.webp";
 
-export default async function LandingPage() {
-  const runCredits = creditsForRun(2);
-  const [hero, pricing, garmentCopy, packs] = await Promise.all([getAppContent("landing.hero"), getAppContent("landing.pricing"), getAppContent("landing.garments"), getCreditPacks()]);
-  const activePacks = packs;
-  const featured = Math.min(1, Math.max(0, activePacks.length - 1));
+/**
+ * The shell (header, bento, steps, FAQ, footer) is static and prerenders.
+ * Copy and prices that the admin console edits are read from the content
+ * tables inside Suspense boundaries, so the shell is instant and the cached
+ * sections stream in (from `use cache`, usually within the same response).
+ */
+export default function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-line/70 bg-canvas/80 backdrop-blur">
@@ -43,34 +46,9 @@ export default async function LandingPage() {
       {/* ---------------------------------------------------------------- hero */}
       <section className="wash">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:pb-24 lg:pt-20">
-          <div className="fade-up">
-            <p className="eyebrow mb-5">{hero.eyebrow}</p>
-            <h1 className="display-xl text-ink">
-              {hero.lines.map((line, i) => (
-                <span key={i} className="block">
-                  {line}
-                </span>
-              ))}
-            </h1>
-            <p className="mt-6 max-w-lg text-lg leading-8 text-ink-2">{hero.subtitle}</p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/sign-in">
-                  {hero.primaryCta} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="secondary">
-                <Link href="#how">{hero.secondaryCta}</Link>
-              </Button>
-            </div>
-            <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
-              {hero.bullets.map((t) => (
-                <li key={t} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-teal" aria-hidden="true" /> {t}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Suspense fallback={<HeroFallback />}>
+            <HeroCopy />
+          </Suspense>
 
           <div className="mx-auto w-full max-w-[340px] fade-up [animation-delay:150ms]">
             <div className="phone float-slow">
@@ -190,50 +168,14 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------------------------------------------------------- garments */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div className="max-w-xl">
-            <p className="eyebrow mb-3">Made for Indian wear</p>
-            <h2 className="display-lg">{garmentCopy.heading}</h2>
-          </div>
-          <p className="max-w-sm text-sm leading-6 text-ink-2">{garmentCopy.note}</p>
-        </div>
-        <ul className="mt-8 flex flex-wrap gap-2.5">
-          {garmentCopy.items.map((g) => (
-            <li key={g.label} className={`rounded-full border px-4 py-2 text-sm font-semibold ${g.live ? "border-line-strong bg-surface text-ink" : "border-dashed border-line-strong text-ink-3"}`}>
-              {g.live ? g.label : `${g.label} · coming later`}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Suspense fallback={<SectionFallback />}>
+        <Garments />
+      </Suspense>
 
       {/* ---------------------------------------------------------- pricing */}
-      <section id="pricing" className="bg-surface-2/70">
-        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
-          <div className="max-w-xl">
-            <p className="eyebrow mb-3">{pricing.eyebrow}</p>
-            <h2 className="display-lg">{pricing.heading}</h2>
-            <p className="mt-4 leading-7 text-ink-2">{pricing.blurb.replace("25 credits", `${runCredits} credits`)}</p>
-          </div>
-          <ul className="mt-10 grid gap-4 md:grid-cols-3">
-            {activePacks.map((p, i) => (
-              <li key={p.id} className={`card flex flex-col p-6 sm:p-7 ${i === featured ? "ring-2 ring-accent" : ""}`}>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-ink-2">{p.label}</p>
-                  {i === featured ? <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">Most chosen</span> : null}
-                </div>
-                <p className="mt-3 font-display text-4xl font-extrabold text-ink">₹{(p.amountMinor / 100).toLocaleString("en-IN")}</p>
-                <p className="mt-1 text-sm text-ink-2">
-                  {p.credits.toLocaleString("en-IN")} credits · {p.blurb}
-                </p>
-                <Button asChild className="mt-6" variant={i === featured ? "primary" : "secondary"}>
-                  <Link href="/sign-in">{pricing.cta}</Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <Suspense fallback={<SectionFallback id="pricing" tinted />}>
+        <Pricing />
+      </Suspense>
 
       {/* ---------------------------------------------------------- faq */}
       <section className="mx-auto w-full max-w-3xl px-5 py-20 sm:px-8">
@@ -266,6 +208,132 @@ export default async function LandingPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------ data sections */
+
+async function HeroCopy() {
+  const hero = await getAppContent("landing.hero");
+  return (
+    <div className="fade-up">
+      <p className="eyebrow mb-5">{hero.eyebrow}</p>
+      <h1 className="display-xl text-ink">
+        {hero.lines.map((line, i) => (
+          <span key={i} className="block">
+            {line}
+          </span>
+        ))}
+      </h1>
+      <p className="mt-6 max-w-lg text-lg leading-8 text-ink-2">{hero.subtitle}</p>
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <Button asChild size="lg">
+          <Link href="/sign-in">
+            {hero.primaryCta} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="secondary">
+          <Link href="#how">{hero.secondaryCta}</Link>
+        </Button>
+      </div>
+      <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
+        {hero.bullets.map((t) => (
+          <li key={t} className="flex items-center gap-2">
+            <Check className="h-4 w-4 text-teal" aria-hidden="true" /> {t}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+async function Garments() {
+  const garmentCopy = await getAppContent("landing.garments");
+  return (
+    <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="max-w-xl">
+          <p className="eyebrow mb-3">Made for Indian wear</p>
+          <h2 className="display-lg">{garmentCopy.heading}</h2>
+        </div>
+        <p className="max-w-sm text-sm leading-6 text-ink-2">{garmentCopy.note}</p>
+      </div>
+      <ul className="mt-8 flex flex-wrap gap-2.5">
+        {garmentCopy.items.map((g) => (
+          <li key={g.label} className={`rounded-full border px-4 py-2 text-sm font-semibold ${g.live ? "border-line-strong bg-surface text-ink" : "border-dashed border-line-strong text-ink-3"}`}>
+            {g.live ? g.label : `${g.label} · coming later`}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+async function Pricing() {
+  const runCredits = creditsForRun(2);
+  const [pricing, activePacks] = await Promise.all([getAppContent("landing.pricing"), getCreditPacks()]);
+  const featured = Math.min(1, Math.max(0, activePacks.length - 1));
+  return (
+    <section id="pricing" className="bg-surface-2/70">
+      <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
+        <div className="max-w-xl">
+          <p className="eyebrow mb-3">{pricing.eyebrow}</p>
+          <h2 className="display-lg">{pricing.heading}</h2>
+          <p className="mt-4 leading-7 text-ink-2">{pricing.blurb.replace("25 credits", `${runCredits} credits`)}</p>
+        </div>
+        <ul className="mt-10 grid gap-4 md:grid-cols-3">
+          {activePacks.map((p, i) => (
+            <li key={p.id} className={`card flex flex-col p-6 sm:p-7 ${i === featured ? "ring-2 ring-accent" : ""}`}>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-ink-2">{p.label}</p>
+                {i === featured ? <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">Most chosen</span> : null}
+              </div>
+              <p className="mt-3 font-display text-4xl font-extrabold text-ink">₹{(p.amountMinor / 100).toLocaleString("en-IN")}</p>
+              <p className="mt-1 text-sm text-ink-2">
+                {p.credits.toLocaleString("en-IN")} credits · {p.blurb}
+              </p>
+              <Button asChild className="mt-6" variant={i === featured ? "primary" : "secondary"}>
+                <Link href="/sign-in">{pricing.cta}</Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/* Skeletons keep the section heights so the shell does not jump when the copy streams in. */
+
+function HeroFallback() {
+  return (
+    <div aria-hidden="true" className="animate-pulse">
+      <div className="mb-5 h-3.5 w-40 rounded-full bg-surface-3" />
+      <div className="h-14 w-11/12 rounded-2xl bg-surface-3 sm:h-16" />
+      <div className="mt-3 h-14 w-7/12 rounded-2xl bg-surface-3 sm:h-16" />
+      <div className="mt-6 h-4 w-full max-w-lg rounded-full bg-surface-3" />
+      <div className="mt-2.5 h-4 w-10/12 max-w-lg rounded-full bg-surface-3" />
+      <div className="mt-8 flex gap-3">
+        <div className="h-12 w-56 rounded-full bg-surface-3" />
+        <div className="h-12 w-40 rounded-full bg-surface-3" />
+      </div>
+    </div>
+  );
+}
+
+function SectionFallback({ id, tinted = false }: { id?: string; tinted?: boolean }) {
+  return (
+    <section id={id} className={tinted ? "bg-surface-2/70" : undefined}>
+      <div aria-hidden="true" className="mx-auto w-full max-w-6xl animate-pulse px-5 py-20 sm:px-8">
+        <div className="h-3.5 w-32 rounded-full bg-surface-3" />
+        <div className="mt-4 h-10 w-full max-w-xl rounded-2xl bg-surface-3" />
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="h-40 rounded-[var(--radius-card)] bg-surface-3" />
+          <div className="h-40 rounded-[var(--radius-card)] bg-surface-3" />
+          <div className="h-40 rounded-[var(--radius-card)] bg-surface-3" />
+        </div>
+      </div>
+    </section>
   );
 }
 
