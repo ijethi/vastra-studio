@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/shell/wordmark";
 import { CompareSlider } from "@/components/marketing/compare-slider";
 import { Faq } from "@/components/marketing/faq";
-import { CREDIT_PACKS } from "@/lib/billing/packs";
+import { getAppContent, getCreditPacks } from "@/lib/dal/content";
 import { creditsForRun } from "@/lib/dal/pricing";
 
 export const metadata = { title: { absolute: "Vastra Studio · Your suit, on a model, in a minute" } };
@@ -13,10 +13,11 @@ export const metadata = { title: { absolute: "Vastra Studio · Your suit, on a m
 const BEFORE = "/samples/real-mannequin-coral-kurta.webp";
 const AFTER = "/samples/reference-on-model-coral-kurta.webp";
 
-const garments = ["Kurta sets", "Anarkalis", "Kaftans", "Co-ord sets", "Lehengas", "Sharara sets", "Western wear"];
-
-export default function LandingPage() {
+export default async function LandingPage() {
   const runCredits = creditsForRun(2);
+  const [hero, pricing, garmentCopy, packs] = await Promise.all([getAppContent("landing.hero"), getAppContent("landing.pricing"), getAppContent("landing.garments"), getCreditPacks()]);
+  const activePacks = packs;
+  const featured = Math.min(1, Math.max(0, activePacks.length - 1));
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-line/70 bg-canvas/80 backdrop-blur">
@@ -43,27 +44,27 @@ export default function LandingPage() {
       <section className="wash">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:pb-24 lg:pt-20">
           <div className="fade-up">
-            <p className="eyebrow mb-5">For boutiques in India</p>
+            <p className="eyebrow mb-5">{hero.eyebrow}</p>
             <h1 className="display-xl text-ink">
-              Your suit, on a model,
-              <br />
-              in a minute.
+              {hero.lines.map((line, i) => (
+                <span key={i} className="block">
+                  {line}
+                </span>
+              ))}
             </h1>
-            <p className="mt-6 max-w-lg text-lg leading-8 text-ink-2">
-              Photograph the piece the way you already do, on the hanger or the mannequin. Vastra shows it on a real-looking model with the same colour, embroidery and fall, ready for WhatsApp and Instagram.
-            </p>
+            <p className="mt-6 max-w-lg text-lg leading-8 text-ink-2">{hero.subtitle}</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
                 <Link href="/sign-in">
-                  Try it with your next piece <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  {hero.primaryCta} <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <Link href="#how">See how it works</Link>
+                <Link href="#how">{hero.secondaryCta}</Link>
               </Button>
             </div>
             <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
-              {["Free credits to start", "No card needed", "Only pay for photos that pass our check"].map((t) => (
+              {hero.bullets.map((t) => (
                 <li key={t} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-teal" aria-hidden="true" /> {t}
                 </li>
@@ -193,14 +194,14 @@ export default function LandingPage() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
             <p className="eyebrow mb-3">Made for Indian wear</p>
-            <h2 className="display-lg">Built around what hangs in your shop.</h2>
+            <h2 className="display-lg">{garmentCopy.heading}</h2>
           </div>
-          <p className="max-w-sm text-sm leading-6 text-ink-2">Each garment type goes live only after it passes our checks on real pieces from pilot boutiques. Sarees follow after the pilot.</p>
+          <p className="max-w-sm text-sm leading-6 text-ink-2">{garmentCopy.note}</p>
         </div>
         <ul className="mt-8 flex flex-wrap gap-2.5">
-          {garments.map((g) => (
-            <li key={g} className="rounded-full border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink">
-              {g}
+          {garmentCopy.items.map((g) => (
+            <li key={g.label} className={`rounded-full border px-4 py-2 text-sm font-semibold ${g.live ? "border-line-strong bg-surface text-ink" : "border-dashed border-line-strong text-ink-3"}`}>
+              {g.live ? g.label : `${g.label} · coming later`}
             </li>
           ))}
         </ul>
@@ -210,25 +211,23 @@ export default function LandingPage() {
       <section id="pricing" className="bg-surface-2/70">
         <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
           <div className="max-w-xl">
-            <p className="eyebrow mb-3">Pricing</p>
-            <h2 className="display-lg">Less than a cup of chai per photo.</h2>
-            <p className="mt-4 leading-7 text-ink-2">
-              Two versions of a piece cost {runCredits} credits. No monthly fee, credits do not expire while your account is active, and failed photos are refunded.
-            </p>
+            <p className="eyebrow mb-3">{pricing.eyebrow}</p>
+            <h2 className="display-lg">{pricing.heading}</h2>
+            <p className="mt-4 leading-7 text-ink-2">{pricing.blurb.replace("25 credits", `${runCredits} credits`)}</p>
           </div>
           <ul className="mt-10 grid gap-4 md:grid-cols-3">
-            {CREDIT_PACKS.map((p, i) => (
-              <li key={p.id} className={`card flex flex-col p-6 sm:p-7 ${i === 1 ? "ring-2 ring-accent" : ""}`}>
+            {activePacks.map((p, i) => (
+              <li key={p.id} className={`card flex flex-col p-6 sm:p-7 ${i === featured ? "ring-2 ring-accent" : ""}`}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-ink-2">{p.label}</p>
-                  {i === 1 ? <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">Most chosen</span> : null}
+                  {i === featured ? <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">Most chosen</span> : null}
                 </div>
                 <p className="mt-3 font-display text-4xl font-extrabold text-ink">₹{(p.amountMinor / 100).toLocaleString("en-IN")}</p>
                 <p className="mt-1 text-sm text-ink-2">
                   {p.credits.toLocaleString("en-IN")} credits · {p.blurb}
                 </p>
-                <Button asChild className="mt-6" variant={i === 1 ? "primary" : "secondary"}>
-                  <Link href="/sign-in">Start free, buy later</Link>
+                <Button asChild className="mt-6" variant={i === featured ? "primary" : "secondary"}>
+                  <Link href="/sign-in">{pricing.cta}</Link>
                 </Button>
               </li>
             ))}

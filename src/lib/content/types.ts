@@ -53,18 +53,18 @@ export type AppContentKey = keyof AppContentMap;
 export const APP_CONTENT_DEFAULTS: AppContentMap = {
   "landing.hero": {
     eyebrow: "For boutiques in India",
-    lines: ["Your suit.", "On a model.", "In a minute."],
+    lines: ["Your suit, on a model,", "in a minute."],
     subtitle:
-      "Take the photo you already take, on the hanger or the mannequin. Vastra puts it on a model with the same colour, embroidery and fall, ready for WhatsApp and Instagram.",
-    primaryCta: "Start free",
+      "Photograph the piece the way you already do, on the hanger or the mannequin. Vastra shows it on a real-looking model with the same colour, embroidery and fall, ready for WhatsApp and Instagram.",
+    primaryCta: "Try it with your next piece",
     secondaryCta: "See how it works",
-    bullets: ["Free credits to start", "No card needed", "Pay only for photos that pass our check"],
+    bullets: ["Free credits to start", "No card needed", "Only pay for photos that pass our check"],
   },
   "landing.pricing": {
     eyebrow: "Pricing",
     heading: "Less than a cup of chai per photo.",
     blurb: "Two versions of a piece cost 25 credits. Packs start at ₹375 for 250 credits, about ten pieces. No monthly fee, credits do not expire, and failed photos are refunded.",
-    cta: "Start with free credits",
+    cta: "Start free, buy later",
   },
   "landing.garments": {
     heading: "Built around what hangs in your shop.",

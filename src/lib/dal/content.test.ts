@@ -45,7 +45,7 @@ describe("content DAL", () => {
     const festive = await dal.loadReelScenes("festive");
     assert.equal(festive.length, 9);
     const hero = await dal.loadAppContent("landing.hero");
-    assert.equal(hero.lines.length, 3);
+    assert.equal(hero.lines.join(" "), "Your suit, on a model, in a minute.");
   });
 
   it("shows an edit only after the memo is invalidated or bypassed", async () => {
