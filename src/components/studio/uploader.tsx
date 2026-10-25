@@ -42,7 +42,7 @@ export function Uploader({ onFiles, busy, hint }: { onFiles: (files: File[]) => 
           setDrag(false);
           if (!busy) accept(e.dataTransfer.files);
         }}
-        className={cn("card relative flex min-h-[420px] flex-col items-center justify-center p-8 text-center transition-colors", drag && "border-accent bg-accent-soft/40")}
+        className={cn("card wash relative flex min-h-[420px] flex-col items-center justify-center p-8 text-center transition-colors", drag && "border-accent bg-accent-soft/40")}
       >
         <p className="eyebrow mb-3">Step 1 of 2</p>
         <h2 className="display-lg">Add a photo of the garment</h2>
@@ -65,7 +65,7 @@ export function Uploader({ onFiles, busy, hint }: { onFiles: (files: File[]) => 
             onClick={() => galleryRef.current?.click()}
             className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-line-strong bg-surface text-ink shadow-[var(--shadow)] transition-transform hover:bg-surface-2 active:scale-[0.99] disabled:opacity-60"
           >
-            <Images className="h-7 w-7 text-accent" aria-hidden="true" />
+            <Images className="h-7 w-7 text-teal" aria-hidden="true" />
             <span className="text-base font-semibold">Choose photos</span>
             <span className="text-xs text-ink-2">one or many</span>
           </button>

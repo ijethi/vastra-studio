@@ -29,8 +29,8 @@ export default function SignInPage() {
           <Wordmark />
         </Link>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12 fade-up">
-          <h1 className="display-lg">Sign in</h1>
-          <p className="mt-3 text-[0.95rem] leading-7 text-ink-2">We email you a six-digit code. No password to remember.</p>
+          <h1 className="display-lg">Welcome back</h1>
+          <p className="mt-3 text-[0.95rem] leading-7 text-ink-2">We email you a six-digit code. No password to remember. New here? The same code creates your account.</p>
           <div className="mt-8">
             <SignInForm googleEnabled={googleEnabled} />
           </div>
@@ -39,11 +39,15 @@ export default function SignInPage() {
           </p>
         </div>
       </div>
-      <div className="night relative hidden items-center justify-center p-12 lg:flex">
-        <div className="w-full max-w-sm">
-          <CompareSlider before="/samples/real-mannequin-coral-kurta.webp" after="/samples/reference-on-model-coral-kurta.webp" className="shadow-[var(--shadow-lg)]" />
-          <p className="mt-6 font-display text-2xl font-bold leading-tight text-night-ink">The same suit, on a model, before the customer asks.</p>
-          <p className="mt-2 text-sm text-night-ink-2">A real shop photo from a pilot boutique.</p>
+      <div className="wash hidden items-center justify-center p-12 lg:flex">
+        <div className="w-full max-w-[340px]">
+          <div className="phone">
+            <div className="phone-screen p-4">
+              <CompareSlider before="/samples/real-mannequin-coral-kurta.webp" after="/samples/reference-on-model-coral-kurta.webp" className="rounded-[18px]" />
+            </div>
+          </div>
+          <p className="mt-6 text-center font-display text-xl font-bold leading-tight text-ink">The same suit, on a model, before the customer asks.</p>
+          <p className="mt-2 text-center text-sm text-ink-2">A real shop photo from a pilot boutique.</p>
         </div>
       </div>
     </div>

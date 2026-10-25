@@ -83,7 +83,7 @@ export function Alert({ tone = "neutral", title, children }: { tone?: "neutral" 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
   return (
     <div className="card flex flex-col items-center px-6 py-14 text-center">
-      <div className="mb-4 h-14 w-14 rounded-[30%] bg-accent-soft" aria-hidden="true" />
+      <div className="mb-4 h-14 w-14 rounded-[30%] bg-teal-soft" aria-hidden="true" />
       <h3 className="text-xl">{title}</h3>
       <p className="mt-2 max-w-sm text-sm leading-6 text-ink-2">{body}</p>
       {action ? <div className="mt-6">{action}</div> : null}

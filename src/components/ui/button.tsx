@@ -8,12 +8,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-accent text-on-accent hover:bg-accent-hover shadow-[0_8px_20px_-10px_var(--accent)]",
-        secondary: "bg-surface text-ink border border-line-strong hover:border-ink/40",
-        night: "bg-night text-night-ink hover:bg-night-2",
+        primary: "bg-accent text-on-accent hover:bg-accent-hover shadow-[0_10px_24px_-12px_var(--accent)]",
+        secondary: "bg-surface text-ink border border-line-strong hover:border-ink/50 hover:bg-surface-2",
+        night: "bg-ink text-canvas hover:bg-night-2",
+        teal: "bg-teal text-white hover:brightness-110",
         ghost: "text-ink-2 hover:text-ink hover:bg-surface-2",
         danger: "bg-danger-soft text-danger hover:brightness-95 border border-transparent",
-        link: "text-accent underline-offset-4 hover:underline px-0 h-auto",
+        link: "text-teal underline-offset-4 hover:underline px-0 h-auto",
       },
       size: {
         sm: "h-9 px-4 text-sm",

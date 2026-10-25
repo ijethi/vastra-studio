@@ -1,14 +1,14 @@
 import { cn } from "@/lib/cn";
 
-/** Wordmark: a folded-cloth mark in rani pink with the name in the display face. */
+/** Wordmark: a coral mark with a folded corner (a hem turned over) and the name. */
 export function Wordmark({ large, onDark }: { large?: boolean; onDark?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <span aria-hidden="true" className={cn("relative block overflow-hidden rounded-[30%]", large ? "h-9 w-9" : "h-7 w-7")}>
+      <span aria-hidden="true" className={cn("relative block overflow-hidden", large ? "h-9 w-9 rounded-[12px]" : "h-7 w-7 rounded-[9px]")}>
         <span className="absolute inset-0 bg-accent" />
-        <span className="absolute inset-0 origin-bottom-left -skew-y-[18deg] translate-y-1/2 bg-gold/90" />
+        <span className="absolute -right-1/3 -top-1/3 h-2/3 w-2/3 rotate-45 bg-gold" />
       </span>
-      <span className={cn("font-display font-bold tracking-tight", large ? "text-2xl" : "text-lg", onDark ? "text-night-ink" : "text-ink")}>
+      <span className={cn("font-display font-extrabold tracking-tight", large ? "text-2xl" : "text-lg", onDark ? "text-night-ink" : "text-ink")}>
         Vastra <span className={onDark ? "text-night-ink-2" : "text-ink-2"}>Studio</span>
       </span>
     </span>
